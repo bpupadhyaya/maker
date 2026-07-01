@@ -16,3 +16,5 @@ export type { Session, SessionDeps } from "./session.ts";
 export { createSession } from "./session.ts";
 export { echoInference } from "./backends/echo-inference.ts";
 export type { EchoOptions } from "./backends/echo-inference.ts";
+export { ollamaInference } from "./backends/ollama-inference.ts";
+export type { OllamaOptions, FetchLike } from "./backends/ollama-inference.ts";

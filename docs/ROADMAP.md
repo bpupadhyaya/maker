@@ -16,7 +16,13 @@ chosen so there's an end-to-end vertical slice as early as possible, then depth.
 it persists — **fully offline**, from both the TUI and the GUI.
 
 **Progress:** ✅ M0.0 (monorepo scaffold + CI skeleton) · ✅ M0.1 (engine core + the four
-interfaces + echo backend + 5 passing tests, `node --test`, zero install, offline). Next: M0.2.
+interfaces + echo backend + tests) · ✅ M0.2 (Ollama `InferenceBackend`, HTTP-mocked, 10 tests
+green offline). Next: M0.3.
+
+**`needs-user` (external resources I can't provision autonomously):**
+- **M0.2 real-model check** — code-complete + mock-tested, but verifying a *real* offline
+  completion needs `ollama` installed + a model pulled (`ollama pull qwen2.5-coder:7b`). Not on
+  this machine.
 
 **Engineering guardrails (all milestones):**
 - Engine is **headless + interface-first** — GUI/TUI/inference/runtime are thin clients/adapters.
