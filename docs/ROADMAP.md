@@ -111,7 +111,10 @@ stored only in Maker's app space (`~/.maker/models`).
 `getActiveModel`/`setActiveModel`, all under `MAKER_HOME/models` (app space, never system). Smoke:
 list/disk/switch/remove clean; removing the active model clears it).
 
-- ⏭️ G2 GUI local dev server (Node, no Rust) — serves web UI + engine bridge + model-mgmt REST + opens browser
+- ✅ G2 GUI local server (Node, no Rust) — `packages/gui/serve.ts`: serves the web UI, bridges the
+  conversation to `createMaker` over **SSE** (`POST /api/express`), model-management REST
+  (`GET /api/models`, `POST /api/models/{download,remove,use}`), opens the browser; `npm start`.
+  Smoke: web served, 20 models listed, active switched, conversation streamed — all without Tauri.
 - ⏭️ G3 GUI web UI fully wired — conversation, living-tool iframe, Brief strip, model panel
 - ⏭️ G4 TUI turnkey — /models, /use, /remove, auto-open tool in browser, active-model wired
 - ⏭️ G5 Tauri native shell wired (compile/sign = needs-user)

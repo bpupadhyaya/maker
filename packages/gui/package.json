@@ -10,6 +10,7 @@
     "@maker/engine": "*"
   },
   "scripts": {
+    "start": "node serve.ts",
     "test": "node --test \"test/**/*.test.ts\"",
     "tauri:dev": "echo \"needs-user: install Rust + Tauri CLI, then: cargo tauri dev\"",
     "tauri:build": "echo \"needs-user: install Rust + Tauri CLI, then: cargo tauri build\""
