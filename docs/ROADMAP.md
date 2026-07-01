@@ -120,7 +120,10 @@ list/disk/switch/remove clean; removing the active model clears it).
   the Brief strip updates, and a **Model panel** lists installed + available models with
   download-with-progress, remove-to-free-space, switch-active, and disk usage. Smoke: panel markup +
   endpoint wiring + live use/remove + conversation SSE. **The GUI is usable end to end in a browser.**
-- ⏭️ G4 TUI turnkey — /models, /use, /remove, auto-open tool in browser, active-model wired
+- ✅ G4 TUI turnkey — `/models` (installed + available, active marked), `/use <id>` (switch,
+  persisted), `/remove <id>` (clean, frees space); the controller gained an `onEvent` hook so the
+  REPL **auto-opens the living tool in the browser** on `tool-running`; the active model is
+  persisted and the Ollama backend uses its tag. Smoke: list/use/remove side effects verified.
 - ⏭️ G5 Tauri native shell wired (compile/sign = needs-user)
 - ⏭️ G6 README — honest install (clone repo + run), model management, env vars
 

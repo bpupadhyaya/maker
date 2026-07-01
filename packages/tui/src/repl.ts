@@ -1,5 +1,6 @@
 import * as readline from "node:readline";
 import { pathToFileURL } from "node:url";
+import { spawn } from "node:child_process";
 import {
   createMaker,
   echoInference,
@@ -16,8 +17,34 @@ import {
   selectModel,
   chooseInstaller,
   chooseBackendKind,
+  MODEL_CATALOG,
+  listInstalledModels,
+  getActiveModel,
+  setActiveModel,
+  removeModel,
 } from "../../provision/src/index.ts";
+import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
+
+function openBrowser(url: string): void {
+  if (process.env["MAKER_NO_OPEN"]) return;
+  const cmd =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "cmd"
+        : "xdg-open";
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  try {
+    spawn(cmd, args, { detached: true, stdio: "ignore" }).unref();
+  } catch {
+    // best-effort
+  }
+}
+
+function gb(bytes: number): string {
+  return (bytes / 1024 ** 3).toFixed(1) + " GB";
+}
 
 /**
  * The M0.3 terminal entrypoint: a zero-dependency readline REPL, a thin client
@@ -29,10 +56,10 @@ import { runMakerConversation } from "./controller.ts";
  * the front-end usable and fully offline today.)
  */
 /** Map MAKER_BACKEND to an inference backend (echo = no-model demo). */
-function makeInference(name: string): InferenceBackend {
+function makeInference(name: string, ollamaModel?: string): InferenceBackend {
   switch (name) {
     case "ollama":
-      return ollamaInference();
+      return ollamaModel ? ollamaInference({ model: ollamaModel }) : ollamaInference();
     case "llamacpp":
     case "llama.cpp":
       return llamaCppInference();
@@ -45,7 +72,11 @@ function makeInference(name: string): InferenceBackend {
 
 export async function main(): Promise<void> {
   const backendName = process.env["MAKER_BACKEND"] ?? "echo";
-  const inference = makeInference(backendName);
+  const active = await getActiveModel();
+  const activeEntry = active
+    ? MODEL_CATALOG.find((m) => m.id === active)
+    : undefined;
+  const inference = makeInference(backendName, activeEntry?.ollama);
 
   const store = fileMemoryStore();
   const maker = createMaker({
@@ -103,10 +134,52 @@ export async function main(): Promise<void> {
     write(result.ok ? "\n✓ Setup complete.\n" : `\n✗ ${result.detail}\n`);
   }
 
+  // Model management commands (all app-space, ~/.maker/models).
+  async function cmdModels(): Promise<void> {
+    const installed = await listInstalledModels();
+    const activeNow = await getActiveModel();
+    write("\nInstalled (in ~/.maker/models):\n");
+    if (installed.length === 0) write("  (none — run /setup)\n");
+    for (const m of installed) {
+      const mark = m.id === activeNow ? "*" : " ";
+      write(`  ${mark} ${m.id} — ${m.name} (${gb(m.sizeBytes)})${m.id === activeNow ? " [active]" : ""}\n`);
+    }
+    write("\nAvailable (download via /setup or the GUI Model panel):\n");
+    for (const m of MODEL_CATALOG) {
+      write(`    ${m.id} — ${m.name} (${m.tier}, ~${m.approxSizeGB}GB)${m.recommended ? " *" : ""}\n`);
+    }
+    write("\n/use <id> to switch · /remove <id> to free space\n");
+  }
+  async function cmdUse(arg: string): Promise<void> {
+    if (!arg) return void write("usage: /use <model-id>\n");
+    await setActiveModel(arg);
+    write(`\nActive model set to ${arg}. Restart Maker to use it.\n`);
+  }
+  async function cmdRemove(arg: string): Promise<void> {
+    if (!arg) return void write("usage: /remove <model-id>\n");
+    const removed = await removeModel(arg);
+    write(removed ? `\nRemoved ${arg} — freed space.\n` : `\n${arg} was not installed.\n`);
+  }
+
+  // Auto-open the living tool in the browser when it (re)starts.
+  let openedUrl = "";
+  const onEvent = (ev: MakerEvent): void => {
+    if (ev.type === "tool-running" && ev.url !== openedUrl) {
+      openedUrl = ev.url;
+      openBrowser(ev.url);
+    }
+  };
+
   const io = { input: rl, write };
   await runMakerConversation(maker, io, {
     prompt: "\n» ",
-    commands: { "/setup": setup },
+    commands: {
+      "/setup": setup,
+      "/models": cmdModels,
+      "/use": cmdUse,
+      "/remove": cmdRemove,
+    },
+    onEvent,
   });
   await maker.stop();
   rl.close();

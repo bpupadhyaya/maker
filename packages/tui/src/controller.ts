@@ -17,8 +17,10 @@ export interface TuiIO {
 export interface RunOptions {
   /** Prompt string written before each user turn (e.g. "» "). */
   readonly prompt?: string;
-  /** Slash-commands handled by the front-end (e.g. "/setup") instead of the model. */
-  readonly commands?: Readonly<Record<string, () => Promise<void>>>;
+  /** Slash-commands handled by the front-end (matched by first token; get the rest as an arg). */
+  readonly commands?: Readonly<Record<string, (arg: string) => Promise<void> | void>>;
+  /** Observe each streamed event (e.g. to open the living tool in a browser). */
+  readonly onEvent?: (ev: MakerEvent) => void;
 }
 
 /**
@@ -39,11 +41,13 @@ async function drive(
     const trimmed = line.trim();
     if (trimmed === "/exit" || trimmed === "/quit") break;
 
-    const command = commands[trimmed];
+    const parts = trimmed.split(/\s+/);
+    const command = commands[parts[0] ?? ""];
     if (command) {
-      await command();
+      await command(parts.slice(1).join(" "));
     } else if (trimmed !== "") {
       for await (const ev of respond(trimmed)) {
+        opts.onEvent?.(ev);
         io.write(renderEvent(ev));
       }
       io.write("\n");
