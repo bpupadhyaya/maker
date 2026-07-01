@@ -46,6 +46,8 @@ export { parsePack, parsePackBlock } from "./pack.ts";
 export type { CapabilityPack, PackTemplate, PackRegistry } from "./pack.ts";
 export { importTool } from "./tool-export.ts";
 export type { ToolExport } from "./tool-export.ts";
+export { exportCommons, importCommons } from "./commons.ts";
+export type { CommonsBundle, ImportedCommons } from "./commons.ts";
 export { textInput, voiceInput, sketchInput } from "./input.ts";
 export type { InputModality, InputRequest, Transcriber, SketchDescriber } from "./input.ts";
 export { emitTarget } from "./target.ts";
