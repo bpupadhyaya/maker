@@ -63,6 +63,30 @@ async function loadStarters() {
   box.appendChild(row);
 }
 loadStarters();
+
+// ---------- projects ----------
+async function loadProjects() {
+  const data = await (await fetch("/api/projects")).json();
+  const sel = $("#project-select");
+  sel.innerHTML = "";
+  for (const p of data.projects) {
+    const o = document.createElement("option");
+    o.value = p.id;
+    o.textContent = `${p.name} (${p.toolIds.length})`;
+    if (p.id === data.active) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+$("#project-select").addEventListener("change", async (e) => {
+  await post("/api/projects/use", { id: e.target.value });
+});
+$("#project-new").addEventListener("click", async () => {
+  const name = prompt("New project name:");
+  if (!name) return;
+  await post("/api/projects", { name });
+  loadProjects();
+});
+loadProjects();
 function renderBrief(brief) {
   briefGoal.textContent = "Goal: " + (brief.goal || "(not set yet)");
   briefOpen.textContent = (brief.open?.length ?? 0) + " open";

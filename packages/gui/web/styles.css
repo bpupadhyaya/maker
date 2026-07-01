@@ -87,6 +87,8 @@ body {
 .turn.error { color: #f7768e; }
 .turn.ok { color: #9ece6a; }
 
+#project-select { background: var(--panel); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 8px; }
+#project-new { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
 #models-btn {
   background: transparent; color: var(--muted);
   border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer;

@@ -13,6 +13,15 @@ export { writeHandoff } from "./handoff-writer.ts";
 export type { HandoffBundle } from "./handoff-writer.ts";
 export { getRoles, setRoles, isOnboarded, markOnboarded } from "./profile.ts";
 export {
+  listProjects,
+  getProject,
+  createProject,
+  getActiveProject,
+  setActiveProject,
+  addToolToProject,
+} from "./projects.ts";
+export type { Project } from "./projects.ts";
+export {
   registerTool,
   listTools,
   getTool,

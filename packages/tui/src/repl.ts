@@ -10,7 +10,10 @@ import {
 } from "../../engine/src/index.ts";
 import type { InferenceBackend } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
-import { fileMemoryStore, tasteMemory, getRoles, setRoles } from "../../store/src/index.ts";
+import {
+  fileMemoryStore, tasteMemory, getRoles, setRoles,
+  listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
+} from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
 import {
@@ -89,6 +92,10 @@ export async function main(): Promise<void> {
     runtime: localWebRuntime(),
     store,
     taste: tasteMemory(store),
+    onToolBuilt: async (toolId) => {
+      const p = await getActiveProject(store);
+      await addToolToProject(store, p.id, toolId);
+    },
   });
   await maker.restore();
 
@@ -211,6 +218,29 @@ export async function main(): Promise<void> {
     `\nStart with:  ${starterOrder.slice(0, 4).map((s) => s.label.toLowerCase()).join(" · ")}` +
       `   (/starters for all, /starter <id> to build one)\n`,
   );
+  async function cmdProject(arg: string): Promise<void> {
+    const [sub, ...rest] = arg.split(/\s+/);
+    const name = rest.join(" ");
+    if (sub === "new" && name) {
+      const p = await createProject(store, name);
+      await setActiveProject(store, p.id);
+      write(`\n✓ Created + switched to project "${p.name}" (${p.id}).\n`);
+      return;
+    }
+    if (sub === "use" && name) {
+      await setActiveProject(store, name);
+      write(`\n✓ Active project: ${name}.\n`);
+      return;
+    }
+    const active = await getActiveProject(store);
+    const projects = await listProjects(store);
+    write("\nProjects:\n");
+    for (const p of projects) {
+      write(`  ${p.id === active.id ? "*" : " "} ${p.id} — ${p.name} (${p.toolIds.length} tools)\n`);
+    }
+    write("\n/project new <name> · /project use <id>\n");
+  }
+
   async function cmdStarters(): Promise<void> {
     write("\nStarters:\n");
     for (const s of STARTERS) write(`  ${s.id} — ${s.label}: "${s.prompt}"\n`);
@@ -259,6 +289,7 @@ export async function main(): Promise<void> {
       "/role": cmdRole,
       "/starters": cmdStarters,
       "/starter": cmdStarter,
+      "/project": cmdProject,
     },
     onEvent,
   });

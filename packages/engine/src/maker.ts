@@ -38,6 +38,8 @@ export interface MakerDeps {
   readonly taste?: TasteMemory;
   /** Optional tool registry; when present, each built tool registers its contract. */
   readonly registry?: ToolRegistry;
+  /** Called after a tool is (re)built — e.g. to file it under the active project. */
+  readonly onToolBuilt?: (toolId: string) => Promise<void> | void;
 }
 
 export interface Maker {
@@ -166,6 +168,7 @@ export function createMaker(deps: MakerDeps): Maker {
       parseContractBlock(assembled),
     );
     if (deps.registry) await deps.registry.register(contract);
+    if (deps.onToolBuilt) await deps.onToolBuilt(toolId);
 
     await persist();
   }

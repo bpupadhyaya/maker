@@ -12,7 +12,10 @@ import {
 } from "../engine/src/index.ts";
 import type { InferenceBackend, Maker } from "../engine/src/index.ts";
 import { localWebRuntime } from "../runtime/src/index.ts";
-import { fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded } from "../store/src/index.ts";
+import {
+  fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded,
+  listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
+} from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
   detectHardware,
@@ -151,6 +154,10 @@ export async function startServer(
     store,
     taste: tasteMemory(store),
     registry: toolRegistry(store),
+    onToolBuilt: async (toolId) => {
+      const p = await getActiveProject(store);
+      await addToolToProject(store, p.id, toolId);
+    },
   });
   await maker.restore();
 
@@ -211,6 +218,27 @@ async function handle(
     const roles = await getRoles(store);
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ starters: orderedStarters(startersForRoles(roles)) }));
+    return;
+  }
+  if (url === "/api/projects" && method === "GET") {
+    const active = (await getActiveProject(store)).id; // ensures the default exists
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ projects: await listProjects(store), active }));
+    return;
+  }
+  if (url === "/api/projects" && method === "POST") {
+    const body = await readJson(req);
+    const project = await createProject(store, String(body["name"] ?? "Project"));
+    await setActiveProject(store, project.id);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(project));
+    return;
+  }
+  if (url === "/api/projects/use" && method === "POST") {
+    const body = await readJson(req);
+    await setActiveProject(store, String(body["id"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ active: String(body["id"]) }));
     return;
   }
 
