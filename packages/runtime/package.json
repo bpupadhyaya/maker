@@ -1,0 +1,15 @@
+{
+  "name": "@maker/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local web/TS tool runtime for Maker — builds and serves generated tools offline, sandboxed.",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@maker/engine": "*"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

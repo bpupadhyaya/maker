@@ -18,8 +18,10 @@ it persists — **fully offline**, from both the TUI and the GUI.
 **Progress:** ✅ M0.0 (monorepo scaffold + CI skeleton) · ✅ M0.1 (engine core + the four
 interfaces + echo backend + tests) · ✅ M0.2 (Ollama `InferenceBackend`, HTTP-mocked, 10 tests
 green offline) · ✅ M0.3 (terminal front-end — zero-dep readline REPL, thin client over the
-engine; pure render/controller unit-tested; live REPL smoke-tested offline; 14 tests green).
-Next: M0.4.
+engine; pure render/controller unit-tested; live REPL smoke-tested offline; 14 tests green) ·
+✅ M0.4 (tool substrate + runtime + sandbox — `@maker/runtime` builds a web/TS tool to a
+Maker-home dir and serves it on a loopback port via Node's built-in http, path-traversal
+sandboxed; 19 tests green, verified with real local `fetch`, offline). Next: M0.5.
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal
