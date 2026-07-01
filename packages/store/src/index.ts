@@ -33,6 +33,8 @@ export {
   startScheduleRunner,
 } from "./schedules.ts";
 export type { Schedule } from "./schedules.ts";
+export { addHook, listHooks, removeHook, runHooks } from "./hooks.ts";
+export type { Hook, HookEvent } from "./hooks.ts";
 export {
   registerTool,
   listTools,

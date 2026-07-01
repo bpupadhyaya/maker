@@ -17,7 +17,9 @@ import {
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
+  addHook, listHooks, removeHook, runHooks,
 } from "../store/src/index.ts";
+import type { HookEvent } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
   detectHardware,
@@ -159,6 +161,7 @@ export async function startServer(
     onToolBuilt: async (toolId) => {
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
+      await runHooks(store, "tool-built", { toolId });
     },
   });
   await maker.restore();
@@ -292,6 +295,27 @@ async function handle(
     return;
   }
 
+  // --- hooks (H5.6) ---
+  if (url === "/api/hooks" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ hooks: await listHooks(store) }));
+    return;
+  }
+  if (url === "/api/hooks" && method === "POST") {
+    const body = await readJson(req);
+    const h = await addHook(store, String(body["event"]) as HookEvent, String(body["command"] ?? ""));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(h));
+    return;
+  }
+  if (url === "/api/hooks/remove" && method === "POST") {
+    const body = await readJson(req);
+    const removed = await removeHook(store, String(body["id"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ removed }));
+    return;
+  }
+
   // --- conversation bridge (SSE) ---
   if (url === "/api/express" && method === "POST") {
     const body = await readJson(req);
@@ -304,6 +328,7 @@ async function handle(
     sse(res);
     try {
       for await (const ev of maker.express(request)) {
+        if (ev.type === "tool-running") void runHooks(store, "tool-running", { url: ev.url });
         res.write(`data: ${JSON.stringify(ev)}\n\n`);
       }
     } catch (e) {

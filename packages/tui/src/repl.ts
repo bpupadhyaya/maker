@@ -15,7 +15,9 @@ import {
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
+  addHook, listHooks, removeHook, runHooks,
 } from "../../store/src/index.ts";
+import type { HookEvent } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
 import {
@@ -97,6 +99,7 @@ export async function main(): Promise<void> {
     onToolBuilt: async (toolId) => {
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
+      await runHooks(store, "tool-built", { toolId });
     },
   });
   await maker.restore();
@@ -306,8 +309,35 @@ export async function main(): Promise<void> {
     if (ev.type === "tool-running" && ev.url !== openedUrl) {
       openedUrl = ev.url;
       openBrowser(ev.url);
+      void runHooks(store, "tool-running", { url: ev.url });
     }
   };
+
+  async function cmdHook(arg: string): Promise<void> {
+    const parts = arg.split(/\s+/);
+    const sub = parts[0];
+    if (sub === "add") {
+      const event = parts[1] as HookEvent;
+      const command = parts.slice(2).join(" ");
+      if (!["tool-running", "tool-built", "file-change"].includes(event) || !command) {
+        write("usage: /hook add <tool-running|tool-built|file-change> <command…>\n");
+        return;
+      }
+      const h = await addHook(store, event, command);
+      write(`\n✓ Hook ${h.id}: on ${event} run \`${command}\`\n`);
+      return;
+    }
+    if (sub === "remove" && parts[1]) {
+      const ok = await removeHook(store, parts[1]);
+      write(ok ? `\n✓ Removed hook ${parts[1]}.\n` : `\nHook ${parts[1]} not found.\n`);
+      return;
+    }
+    const hooks = await listHooks(store);
+    write("\nHooks:\n");
+    if (!hooks.length) write("  (none — /hook add <event> <command…>)\n");
+    for (const h of hooks) write(`  ${h.id} — on ${h.event}: \`${h.command}\`\n`);
+    write("\nEvents: tool-running · tool-built · file-change\n");
+  }
 
   async function cmdStarter(arg: string): Promise<void> {
     const s = starterById(arg.trim());
@@ -345,6 +375,7 @@ export async function main(): Promise<void> {
       "/project": cmdProject,
       "/macro": cmdMacro,
       "/schedule": cmdSchedule,
+      "/hook": cmdHook,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onEvent,

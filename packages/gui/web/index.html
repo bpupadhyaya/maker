@@ -21,6 +21,7 @@
       </div>
       <button id="macros-btn" title="Macros">＠ Macros</button>
       <button id="sched-btn" title="Schedules">⏱ Schedules</button>
+      <button id="hooks-btn" title="Hooks">⚡ Hooks</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
@@ -123,6 +124,30 @@
         <input id="sched-every" type="number" min="1" placeholder="every N minutes" />
         <input id="sched-prompt" placeholder="prompt (e.g. rebuild my dashboard)" autocomplete="off" />
         <button type="submit">Schedule</button>
+      </form>
+    </aside>
+
+    <!-- Hooks -->
+    <aside id="hooks-panel" hidden aria-label="hooks">
+      <div class="panel-head">
+        <h2>Hooks</h2>
+        <button id="hooks-close">✕</button>
+      </div>
+      <p class="muted">
+        Run a command when something happens — on <code>tool-running</code>,
+        <code>tool-built</code>, or <code>file-change</code>. Context arrives as
+        <code>MAKER_*</code> env vars. Local, offline.
+      </p>
+      <div id="hooks-list" class="model-list"></div>
+      <h3>Add</h3>
+      <form id="hook-add">
+        <select id="hook-event">
+          <option value="tool-built">tool-built</option>
+          <option value="tool-running">tool-running</option>
+          <option value="file-change">file-change</option>
+        </select>
+        <input id="hook-command" placeholder="command (e.g. notify-send 'tool ready')" autocomplete="off" />
+        <button type="submit">Add hook</button>
       </form>
     </aside>
     <div id="scrim" hidden></div>

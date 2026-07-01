@@ -94,15 +94,15 @@ body {
   border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer;
 }
 #scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5; }
-#models-panel, #macros-panel, #sched-panel {
+#models-panel, #macros-panel, #sched-panel, #hooks-panel {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 92vw);
   background: var(--panel); border-left: 1px solid #2a2a31; z-index: 6;
   overflow: auto; padding: 16px; box-shadow: -12px 0 40px rgba(0,0,0,0.4);
 }
-#macros-btn, #sched-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
-#macro-add, #sched-add { display: flex; flex-direction: column; gap: 8px; }
-#macro-add input, #sched-add input { padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }
-#macro-add button, #sched-add button { background: var(--accent); color: #0e0e12; border: 0; border-radius: 6px; padding: 8px; font-weight: 600; cursor: pointer; }
+#macros-btn, #sched-btn, #hooks-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+#macro-add, #sched-add, #hook-add { display: flex; flex-direction: column; gap: 8px; }
+#macro-add input, #sched-add input, #hook-add input, #hook-add select { padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }
+#macro-add button, #sched-add button, #hook-add button { background: var(--accent); color: #0e0e12; border: 0; border-radius: 6px; padding: 8px; font-weight: 600; cursor: pointer; }
 .panel-head { display: flex; align-items: center; gap: 12px; }
 .panel-head h2 { margin: 0; flex: 1; }
 .panel-head button, #models-close {

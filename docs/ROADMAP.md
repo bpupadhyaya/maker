@@ -131,7 +131,11 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   `startScheduleRunner` — an in-process timer that runs due schedules via `maker.express`, injectable
   clock/interval). TUI `/schedule add|list|remove` + runner on launch; GUI ⏱ panel + REST; cron/
   launchd line generated (always-on install = needs-user). Smoke: due-logic, runner fires, TUI+GUI.
-- ⏭️ H5.6 hooks / automation
+- ✅ H5.6 hooks / automation — `@maker/store` `hooks.ts` (Hook = id/event/command; add/list/remove;
+  `runHooks` spawns commands with event context as `MAKER_*` env vars). Wired: `tool-running` (from
+  the event stream) + `tool-built` (from `onToolBuilt`) in both front-ends; TUI `/hook add|list|
+  remove`; GUI ⚡ panel + REST. Smoke: runHooks exec + tool-built on a real build. (`file-change` is
+  a registered event type; auto-firing it needs a file watcher — small follow-up.)
 - ⏭️ H5.7 history + search
 - ⏭️ H5.8 settings/config UI
 - ⏭️ H5.9 local usage stats

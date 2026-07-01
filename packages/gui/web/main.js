@@ -206,7 +206,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); });
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});
@@ -285,6 +285,38 @@ $("#sched-add").addEventListener("submit", async (e) => {
   $("#sched-every").value = "";
   $("#sched-prompt").value = "";
   loadSchedules();
+});
+
+// ---------- hooks panel ----------
+const hooksPanel = $("#hooks-panel");
+function openHooks() { hooksPanel.hidden = false; scrim.hidden = false; loadHooks(); }
+function closeHooks() { hooksPanel.hidden = true; scrim.hidden = true; }
+$("#hooks-btn").addEventListener("click", openHooks);
+$("#hooks-close").addEventListener("click", closeHooks);
+async function loadHooks() {
+  const data = await (await fetch("/api/hooks")).json();
+  const list = $("#hooks-list");
+  list.innerHTML = data.hooks.length ? "" : '<p class="muted">No hooks yet.</p>';
+  for (const h of data.hooks) {
+    const row = document.createElement("div");
+    row.className = "model-row";
+    const name = document.createElement("span");
+    name.className = "m-name";
+    name.innerHTML = `on <b>${h.event}</b> → <code>${h.command}</code>`;
+    const rm = button("Remove", async () => { await post("/api/hooks/remove", { id: h.id }); loadHooks(); });
+    rm.className = "danger";
+    row.append(name, rm);
+    list.appendChild(row);
+  }
+}
+$("#hook-add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const event = $("#hook-event").value;
+  const command = $("#hook-command").value.trim();
+  if (!command) return;
+  await post("/api/hooks", { event, command });
+  $("#hook-command").value = "";
+  loadHooks();
 });
 
 async function loadModels() {
