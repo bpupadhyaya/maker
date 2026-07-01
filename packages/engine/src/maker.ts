@@ -20,7 +20,12 @@ import { slugName, renderReadme, buildManifest } from "./handoff.ts";
 import type { HandoffData } from "./handoff.ts";
 import { parseContractBlock, deriveContract } from "./contract.ts";
 import type { ToolContract, ToolRegistry } from "./contract.ts";
-import { matchTools } from "./composition.ts";
+import {
+  matchTools,
+  snapshotDependency,
+  verifyDependencies,
+} from "./composition.ts";
+import type { DependencySnapshot } from "./composition.ts";
 
 export interface MakerDeps {
   readonly inference: InferenceBackend;
@@ -49,6 +54,8 @@ export interface Maker {
   reuse(contract: ToolContract): void;
   /** Ids of tools this one composes/depends on. */
   readonly dependencies: readonly string[];
+  /** Check composed dependencies against the live registry; concrete breaks. */
+  verifyComposition(): Promise<string[]>;
   restore(): Promise<boolean>;
   stop(): Promise<void>;
 }
@@ -72,6 +79,7 @@ export function createMaker(deps: MakerDeps): Maker {
   let gapsChecked = false;
   let contract: ToolContract | undefined;
   const dependencies: string[] = [];
+  const depSnapshots: DependencySnapshot[] = [];
   const checks: Check[] = [smokeCheck()]; // the accumulating regression net
 
   const briefKey = `${toolId}:brief`;
@@ -201,13 +209,20 @@ export function createMaker(deps: MakerDeps): Maker {
       return contract;
     },
     reuse(dep: ToolContract) {
-      if (!dependencies.includes(dep.id)) dependencies.push(dep.id);
+      if (!dependencies.includes(dep.id)) {
+        dependencies.push(dep.id);
+        depSnapshots.push(snapshotDependency(dep));
+      }
       brief = mergeBrief(brief, {
         decided: [...brief.decided, `composes: ${dep.name}`],
       });
     },
     get dependencies() {
       return dependencies;
+    },
+    async verifyComposition() {
+      if (!deps.registry) return [];
+      return verifyDependencies(depSnapshots, await deps.registry.list());
     },
     restore,
     async stop() {

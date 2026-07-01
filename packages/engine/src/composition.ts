@@ -59,3 +59,44 @@ export function matchTools(
   }
   return matches.sort((a, b) => b.score - a.score);
 }
+
+/** What a composed tool relied on from a dependency, captured at reuse time. */
+export interface DependencySnapshot {
+  readonly id: string;
+  readonly name: string;
+  readonly provides: readonly string[];
+}
+
+export function snapshotDependency(c: ToolContract): DependencySnapshot {
+  return { id: c.id, name: c.name, provides: c.provides.map((p) => p.name) };
+}
+
+/**
+ * Cross-tool verification: compare the snapshots a tool depends on against the
+ * live contracts. A dependency that vanished, or that dropped a provision the
+ * dependent relied on, is reported as a concrete break — the regression net and
+ * contradiction-catching extending across tools, not just rings.
+ */
+export function verifyDependencies(
+  snapshots: readonly DependencySnapshot[],
+  current: readonly ToolContract[],
+): string[] {
+  const byId = new Map(current.map((c) => [c.id, c]));
+  const violations: string[] = [];
+  for (const s of snapshots) {
+    const c = byId.get(s.id);
+    if (!c) {
+      violations.push(`✗ dependency "${s.name}" (${s.id}) no longer exists`);
+      continue;
+    }
+    const names = new Set(c.provides.map((p) => p.name));
+    for (const p of s.provides) {
+      if (!names.has(p)) {
+        violations.push(
+          `✗ "${c.name}" no longer provides "${p}" — a composed tool relies on it`,
+        );
+      }
+    }
+  }
+  return violations;
+}

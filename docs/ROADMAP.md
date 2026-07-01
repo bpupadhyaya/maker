@@ -139,13 +139,16 @@ derived from the Brief (+ a reserved ```contract``` block); `@maker/store` regis
 (composition — `matchTools` (stemmed token overlap) ranks registered tools against a request;
 `createMaker` emits a `reuse-offer` on the first turn when a match exists (offered, never
 presumed); `maker.reuse()` records the dependency; runtime smoke: "expense report" → offered the
-"expense-tracker", accepted, dependency recorded).
+"expense-tracker", accepted, dependency recorded) · ✅ M2.3 (cross-tool verification —
+`snapshotDependency`/`verifyDependencies`: `reuse()` snapshots the dependency's provided names,
+`maker.verifyComposition()` compares against the live registry and reports concrete breaks;
+runtime smoke: dropping a relied-on provision is caught across tools).
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
 | **M2.1** | Tool contracts + registry | tools expose a contract; a local registry lists them | ✅ done (smoke: 2 contracts registered + discoverable) | med |
 | **M2.2** | Composition (proactive-offer) | when a new request matches an existing tool, Maker offers to build on it; wires the contract in | ✅ done (smoke: match → reuse-offer → accept → dependency recorded) | high |
-| **M2.3** | Cross-tool verification | a composed tool's checks flag when its dependency changes | smoke: change dep → dependent's check reports the break | high |
+| **M2.3** | Cross-tool verification | a composed tool's checks flag when its dependency changes | ✅ done (smoke: dropped provision caught across tools) | high |
 | **M2.4** | Capability packs | offline packs (templates/archetypes) with a format + apply | smoke: apply a local pack → its templates available (download = needs-user) | med |
 | **M2.5** | Tool export/import | export a tool (code + Brief + checks + contract) and import it back | smoke: export → import → runnable + contract restored | med |
 
