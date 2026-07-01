@@ -3,7 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Maker's terminal front-end (Ink). A thin client over @maker/engine. Implemented in M0.3.",
+  "description": "Maker's terminal front-end. A thin client over @maker/engine (M0.3: zero-dep readline REPL).",
   "license": "MIT",
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "bin": {
+    "maker": "src/repl.ts"
+  },
+  "dependencies": {
+    "@maker/engine": "*"
+  },
+  "scripts": {
+    "start": "node src/repl.ts",
+    "test": "node --test \"test/**/*.test.ts\""
+  }
 }

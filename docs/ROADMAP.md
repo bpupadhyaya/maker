@@ -17,12 +17,22 @@ it persists — **fully offline**, from both the TUI and the GUI.
 
 **Progress:** ✅ M0.0 (monorepo scaffold + CI skeleton) · ✅ M0.1 (engine core + the four
 interfaces + echo backend + tests) · ✅ M0.2 (Ollama `InferenceBackend`, HTTP-mocked, 10 tests
-green offline). Next: M0.3.
+green offline) · ✅ M0.3 (terminal front-end — zero-dep readline REPL, thin client over the
+engine; pure render/controller unit-tested; live REPL smoke-tested offline; 14 tests green).
+Next: M0.4.
+
+**Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
+terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal
+UI (Talk/Split/Build in the terminal) is deferred to a polish milestone (needs a network install
+of Ink). Cross-package imports currently use relative paths (`../../engine/...`) until an
+`npm install` wires the workspace symlinks; they can then switch to `@maker/engine`.
 
 **`needs-user` (external resources I can't provision autonomously):**
 - **M0.2 real-model check** — code-complete + mock-tested, but verifying a *real* offline
   completion needs `ollama` installed + a model pulled (`ollama pull qwen2.5-coder:7b`). Not on
   this machine.
+- **M0.3 Ink polish** — the richer Ink terminal UI needs `npm install ink react` (network).
+  Deferred; the readline REPL covers M0.3's acceptance today.
 
 **Engineering guardrails (all milestones):**
 - Engine is **headless + interface-first** — GUI/TUI/inference/runtime are thin clients/adapters.
