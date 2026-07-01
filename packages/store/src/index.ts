@@ -24,6 +24,16 @@ export type { Project } from "./projects.ts";
 export { setMacro, removeMacro, listMacros, resolveMacro } from "./macros.ts";
 export type { Macro } from "./macros.ts";
 export {
+  addSchedule,
+  listSchedules,
+  removeSchedule,
+  markRun,
+  dueSchedules,
+  cronLineFor,
+  startScheduleRunner,
+} from "./schedules.ts";
+export type { Schedule } from "./schedules.ts";
+export {
   registerTool,
   listTools,
   getTool,

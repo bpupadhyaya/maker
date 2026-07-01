@@ -14,6 +14,7 @@ import {
   fileMemoryStore, tasteMemory, getRoles, setRoles,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
+  addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
 } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
@@ -242,6 +243,37 @@ export async function main(): Promise<void> {
     write("\n/project new <name> · /project use <id>\n");
   }
 
+  // Local scheduling (H5.5): run due schedules while the TUI is open.
+  const scheduleRunner = startScheduleRunner(maker, store);
+  async function cmdSchedule(arg: string): Promise<void> {
+    const parts = arg.split(/\s+/);
+    const sub = parts[0];
+    if (sub === "add") {
+      const everyMinutes = Number(parts[1]);
+      const prompt = parts.slice(2).join(" ");
+      if (!everyMinutes || !prompt) {
+        write("usage: /schedule add <everyMinutes> <prompt…>\n");
+        return;
+      }
+      const s = await addSchedule(store, { prompt, everyMinutes });
+      write(`\n✓ Scheduled "${s.prompt}" every ${s.everyMinutes}m (id ${s.id}); runs while Maker is open.\n`);
+      write(`  For always-on, add this to cron (needs-user):\n    ${cronLineFor(s)}\n`);
+      return;
+    }
+    if (sub === "remove" && parts[1]) {
+      const ok = await removeSchedule(store, parts[1]);
+      write(ok ? `\n✓ Removed schedule ${parts[1]}.\n` : `\nSchedule ${parts[1]} not found.\n`);
+      return;
+    }
+    const schedules = await listSchedules(store);
+    write("\nSchedules:\n");
+    if (!schedules.length) write("  (none — /schedule add <everyMinutes> <prompt…>)\n");
+    for (const s of schedules) {
+      write(`  ${s.id} — every ${s.everyMinutes}m: "${s.prompt}"${s.lastRun ? "" : " (not run yet)"}\n`);
+    }
+    write("\n/schedule add <everyMinutes> <prompt…> · /schedule remove <id>\n");
+  }
+
   async function cmdMacro(arg: string): Promise<void> {
     const [sub, name, ...rest] = arg.split(/\s+/);
     const prompt = rest.join(" ");
@@ -312,10 +344,12 @@ export async function main(): Promise<void> {
       "/starter": cmdStarter,
       "/project": cmdProject,
       "/macro": cmdMacro,
+      "/schedule": cmdSchedule,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onEvent,
   });
+  scheduleRunner.stop();
   await maker.stop();
   rl.close();
 }

@@ -206,7 +206,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", () => { closePanel(); closeMacros(); });
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});
@@ -252,6 +252,39 @@ $("#macro-add").addEventListener("submit", async (e) => {
   $("#macro-name").value = "";
   $("#macro-prompt").value = "";
   loadMacros();
+});
+
+// ---------- schedules panel ----------
+const schedPanel = $("#sched-panel");
+function openSched() { schedPanel.hidden = false; scrim.hidden = false; loadSchedules(); }
+function closeSched() { schedPanel.hidden = true; scrim.hidden = true; }
+$("#sched-btn").addEventListener("click", openSched);
+$("#sched-close").addEventListener("click", closeSched);
+async function loadSchedules() {
+  const data = await (await fetch("/api/schedules")).json();
+  const list = $("#sched-list");
+  list.innerHTML = data.schedules.length ? "" : '<p class="muted">No schedules yet.</p>';
+  for (const s of data.schedules) {
+    const row = document.createElement("div");
+    row.className = "model-row";
+    const name = document.createElement("span");
+    name.className = "m-name";
+    name.innerHTML = `every <b>${s.everyMinutes}m</b> — ${s.prompt}<br><code>${s.cron}</code>`;
+    const rm = button("Remove", async () => { await post("/api/schedules/remove", { id: s.id }); loadSchedules(); });
+    rm.className = "danger";
+    row.append(name, rm);
+    list.appendChild(row);
+  }
+}
+$("#sched-add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const everyMinutes = Number($("#sched-every").value);
+  const prompt = $("#sched-prompt").value.trim();
+  if (!everyMinutes || !prompt) return;
+  await post("/api/schedules", { everyMinutes, prompt });
+  $("#sched-every").value = "";
+  $("#sched-prompt").value = "";
+  loadSchedules();
 });
 
 async function loadModels() {

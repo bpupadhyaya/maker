@@ -20,6 +20,7 @@
         <button data-preset="build">Build</button>
       </div>
       <button id="macros-btn" title="Macros">＠ Macros</button>
+      <button id="sched-btn" title="Schedules">⏱ Schedules</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
@@ -102,6 +103,26 @@
         <input id="macro-name" placeholder="name (e.g. tip)" autocomplete="off" />
         <input id="macro-prompt" placeholder="prompt (e.g. build me a tip calculator)" autocomplete="off" />
         <button type="submit">Save</button>
+      </form>
+    </aside>
+
+    <!-- Schedules -->
+    <aside id="sched-panel" hidden aria-label="schedules">
+      <div class="panel-head">
+        <h2>Schedules</h2>
+        <button id="sched-close">✕</button>
+      </div>
+      <p class="muted">
+        Run a prompt on a cadence — the offline answer to cloud Routines. Runs
+        while Maker is open; a cron line is shown for always-on (install =
+        needs-user).
+      </p>
+      <div id="sched-list" class="model-list"></div>
+      <h3>Add</h3>
+      <form id="sched-add">
+        <input id="sched-every" type="number" min="1" placeholder="every N minutes" />
+        <input id="sched-prompt" placeholder="prompt (e.g. rebuild my dashboard)" autocomplete="off" />
+        <button type="submit">Schedule</button>
       </form>
     </aside>
     <div id="scrim" hidden></div>

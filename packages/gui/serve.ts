@@ -16,6 +16,7 @@ import {
   fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
+  addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
 } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
@@ -161,6 +162,7 @@ export async function startServer(
     },
   });
   await maker.restore();
+  const scheduleRunner = startScheduleRunner(maker, store);
 
   const server = http.createServer((req, res) => {
     void handle(req, res, maker, store).catch((err: unknown) => {
@@ -181,6 +183,7 @@ export async function startServer(
     url,
     close: () =>
       new Promise<void>((resolve) => {
+        scheduleRunner.stop();
         void maker.stop().finally(() => server.close(() => resolve()));
       }),
   };
@@ -259,6 +262,31 @@ async function handle(
   if (url === "/api/macros/remove" && method === "POST") {
     const body = await readJson(req);
     const removed = await removeMacro(store, String(body["name"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ removed }));
+    return;
+  }
+
+  // --- schedules (H5.5) ---
+  if (url === "/api/schedules" && method === "GET") {
+    const schedules = await listSchedules(store);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ schedules: schedules.map((s) => ({ ...s, cron: cronLineFor(s) })) }));
+    return;
+  }
+  if (url === "/api/schedules" && method === "POST") {
+    const body = await readJson(req);
+    const s = await addSchedule(store, {
+      prompt: String(body["prompt"] ?? ""),
+      everyMinutes: Number(body["everyMinutes"] ?? 60),
+    });
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(s));
+    return;
+  }
+  if (url === "/api/schedules/remove" && method === "POST") {
+    const body = await readJson(req);
+    const removed = await removeSchedule(store, String(body["id"]));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ removed }));
     return;

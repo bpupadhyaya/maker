@@ -126,7 +126,11 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   to a saved prompt and builds; TUI `/macro add|list|remove` + expansion; GUI Macros panel (＠) +
   REST (`/api/macros` GET/POST, `/api/macros/remove`) and expansion in `/api/express`. Smoke: TUI +
   GUI expansion build.
-- ⏭️ H5.5 local scheduling (offline routines)
+- ✅ H5.5 local scheduling (offline Routines) — `@maker/store` `schedules.ts` (Schedule =
+  id/name/prompt/everyMinutes/lastRun; add/list/remove/markRun/dueSchedules; `cronLineFor`;
+  `startScheduleRunner` — an in-process timer that runs due schedules via `maker.express`, injectable
+  clock/interval). TUI `/schedule add|list|remove` + runner on launch; GUI ⏱ panel + REST; cron/
+  launchd line generated (always-on install = needs-user). Smoke: due-logic, runner fires, TUI+GUI.
 - ⏭️ H5.6 hooks / automation
 - ⏭️ H5.7 history + search
 - ⏭️ H5.8 settings/config UI
