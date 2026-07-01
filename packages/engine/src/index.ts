@@ -42,3 +42,5 @@ export { matchTools, snapshotDependency, verifyDependencies } from "./compositio
 export type { ReuseMatch, MatchOptions, DependencySnapshot } from "./composition.ts";
 export { parsePack } from "./pack.ts";
 export type { CapabilityPack, PackTemplate, PackRegistry } from "./pack.ts";
+export { importTool } from "./tool-export.ts";
+export type { ToolExport } from "./tool-export.ts";

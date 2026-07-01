@@ -146,7 +146,14 @@ runtime smoke: dropping a relied-on provision is caught across tools) · ✅ M2.
 — `pack.ts`: `CapabilityPack`/`PackTemplate` + `parsePack` (safe import); `@maker/store`
 `installPack`/`listPacks`/`templateFor`/`packRegistry` (local, offline pack registry); runtime
 smoke: pack parsed/installed, templates looked up by kind, bad pack rejected. Download =
-`needs-user`).
+`needs-user`) · ✅ M2.5 (tool export/import — `ToolExport` (files + Brief + checks + contract),
+`maker.exportBundle()`, `importTool(bundle, runtime)`; runtime smoke: export → JSON round-trip →
+import → runnable, metadata intact).
+
+### ✅ H2 COMPLETE — tools compound.
+Tools expose contracts and register; Maker proactively offers reuse; composed dependencies are
+verified across tools; capability packs add offline starters; tools export/import as portable
+bundles. Next: **H3 (reach & richness — multimodal input, mobile, opt-in cloud).**
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
@@ -154,7 +161,7 @@ smoke: pack parsed/installed, templates looked up by kind, bad pack rejected. Do
 | **M2.2** | Composition (proactive-offer) | when a new request matches an existing tool, Maker offers to build on it; wires the contract in | ✅ done (smoke: match → reuse-offer → accept → dependency recorded) | high |
 | **M2.3** | Cross-tool verification | a composed tool's checks flag when its dependency changes | ✅ done (smoke: dropped provision caught across tools) | high |
 | **M2.4** | Capability packs | offline packs (templates/archetypes) with a format + apply | ✅ done (smoke: parse/install/lookup; download = needs-user) | med |
-| **M2.5** | Tool export/import | export a tool (code + Brief + checks + contract) and import it back | smoke: export → import → runnable + contract restored | med |
+| **M2.5** | Tool export/import | export a tool (code + Brief + checks + contract) and import it back | ✅ done (smoke: export → JSON → import → runnable, metadata intact) | med |
 
 ## H3–H4
 

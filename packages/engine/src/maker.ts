@@ -18,6 +18,7 @@ import {
 import type { Check } from "./verification.ts";
 import { slugName, renderReadme, buildManifest } from "./handoff.ts";
 import type { HandoffData } from "./handoff.ts";
+import type { ToolExport } from "./tool-export.ts";
 import { parseContractBlock, deriveContract } from "./contract.ts";
 import type { ToolContract, ToolRegistry } from "./contract.ts";
 import {
@@ -48,6 +49,8 @@ export interface Maker {
   decide(gapId: string, value: string): Promise<void>;
   /** A ready-to-write ejectable bundle (name + files + README + manifest). */
   handoffBundle(): HandoffData;
+  /** A portable, JSON-serializable export (files + Brief + checks + contract). */
+  exportBundle(): ToolExport;
   /** The tool's contract (what it provides to other tools), once built. */
   readonly contract: ToolContract | undefined;
   /** Accept a reuse offer — records the dependency for cross-tool verification. */
@@ -182,6 +185,16 @@ export function createMaker(deps: MakerDeps): Maker {
     };
   }
 
+  function exportBundle(): ToolExport {
+    return {
+      name: slugName(brief.goal),
+      files: lastFiles ?? {},
+      brief,
+      checks: [...checks],
+      contract,
+    };
+  }
+
   async function restore(): Promise<boolean> {
     if (!deps.store) return false;
     const savedBrief = await deps.store.get<Brief>(briefKey);
@@ -205,6 +218,7 @@ export function createMaker(deps: MakerDeps): Maker {
     },
     decide,
     handoffBundle,
+    exportBundle,
     get contract() {
       return contract;
     },
