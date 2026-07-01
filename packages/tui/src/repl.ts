@@ -10,7 +10,8 @@ import {
 } from "../../engine/src/index.ts";
 import type { InferenceBackend } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
-import { fileMemoryStore, tasteMemory } from "../../store/src/index.ts";
+import { fileMemoryStore, tasteMemory, getRoles, setRoles } from "../../store/src/index.ts";
+import { ROLES, roleById } from "../../engine/src/index.ts";
 import {
   provisionModel,
   detectHardware,
@@ -89,11 +90,6 @@ export async function main(): Promise<void> {
     taste: tasteMemory(store),
   });
   await maker.restore();
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
 
   const write = (text: string): void => {
     process.stdout.write(text);
@@ -187,6 +183,27 @@ export async function main(): Promise<void> {
     write(removed ? `\nRemoved ${arg} — freed space.\n` : `\n${arg} was not installed.\n`);
   }
 
+  // Role onboarding (H5.1): a gentle first-run hint, plus a /role command.
+  const currentRoles = await getRoles(store);
+  if (currentRoles.length === 0) {
+    write(
+      "\nTip: tell Maker what you make things for so it can suggest starters —\n" +
+        `  /role <${ROLES.map((r) => r.id).join("|")}>   (optional; e.g. /role money health)\n`,
+    );
+  }
+  async function cmdRole(arg: string): Promise<void> {
+    if (!arg) {
+      const now = await getRoles(store);
+      write(`\nYour roles: ${now.length ? now.join(", ") : "(none)"}\n`);
+      write("Available: " + ROLES.map((r) => `${r.id} (${r.label})`).join(" · ") + "\n");
+      write("Set with: /role <ids…>\n");
+      return;
+    }
+    const ids = arg.split(/\s+/).filter((id) => roleById(id));
+    await setRoles(store, ids);
+    write(`\n✓ Roles set: ${ids.length ? ids.join(", ") : "(none)"} — starters will match.\n`);
+  }
+
   // Auto-open the living tool in the browser when it (re)starts.
   let openedUrl = "";
   const onEvent = (ev: MakerEvent): void => {
@@ -196,6 +213,12 @@ export async function main(): Promise<void> {
     }
   };
 
+  // Create the readline interface only now — after all async setup — so piped
+  // input isn't emitted and lost before we start consuming it.
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   const io = { input: rl, write };
   await runMakerConversation(maker, io, {
     prompt: "\n» ",
@@ -206,6 +229,7 @@ export async function main(): Promise<void> {
       "/remove": cmdRemove,
       "/remove-all": cmdRemoveAll,
       "/reset": cmdReset,
+      "/role": cmdRole,
     },
     onEvent,
   });

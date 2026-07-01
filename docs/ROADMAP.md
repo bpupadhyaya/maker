@@ -101,6 +101,27 @@ mechanical.
 
 ---
 
+## H5 — parity (offline-relevant features from Codex / Claude Code)
+
+Goal: match the features from Codex + Claude Code that are relevant to a 100%-offline tool, so
+users have no reason *not* to use Maker. All offline, app-space, GUI + TUI. Maker stays fully
+free/MIT (monetization deferred to future hosted services — nothing gated).
+
+**Progress:** ✅ H5.1 (role onboarding + personalization — `roles.ts` catalog tuned to Maker's
+everyone-audience (Personal/Money/Health/Learning/Work/Creative/Home/Other) → `startersForRoles`/
+`kindsForRoles`; `@maker/store` `profile.ts` (roles + onboarded, app-space); GUI first-run
+onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a readline race
+(create the interface after async setup). Smoke: roles logic, profile roundtrip, GUI + TUI set).
+
+- ⏭️ H5.2 quick-start actions / templates (role-aware chips + TUI suggestions)
+- ⏭️ H5.3 projects / workspaces
+- ⏭️ H5.4 custom slash commands / macros
+- ⏭️ H5.5 local scheduling (offline routines)
+- ⏭️ H5.6 hooks / automation
+- ⏭️ H5.7 history + search
+- ⏭️ H5.8 settings/config UI
+- ⏭️ H5.9 local usage stats
+
 ## End-user readiness (G-series) — runnable GUI, TUI turnkey, model management
 
 Goal: a non-developer can run Maker and manage models (download / remove / switch), with models

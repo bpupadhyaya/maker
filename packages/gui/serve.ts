@@ -12,7 +12,8 @@ import {
 } from "../engine/src/index.ts";
 import type { InferenceBackend, Maker } from "../engine/src/index.ts";
 import { localWebRuntime } from "../runtime/src/index.ts";
-import { fileMemoryStore, tasteMemory, toolRegistry } from "../store/src/index.ts";
+import { fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded } from "../store/src/index.ts";
+import { ROLES } from "../engine/src/index.ts";
 import {
   detectHardware,
   selectModel,
@@ -154,7 +155,7 @@ export async function startServer(
   await maker.restore();
 
   const server = http.createServer((req, res) => {
-    void handle(req, res, maker).catch((err: unknown) => {
+    void handle(req, res, maker, store).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -181,9 +182,31 @@ async function handle(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   maker: Maker,
+  store: ReturnType<typeof fileMemoryStore>,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
+
+  // --- profile / role onboarding (H5.1) ---
+  if (url === "/api/profile" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(
+      JSON.stringify({
+        roles: await getRoles(store),
+        onboarded: await isOnboarded(store),
+        availableRoles: ROLES.map((r) => ({ id: r.id, label: r.label, blurb: r.blurb })),
+      }),
+    );
+    return;
+  }
+  if (url === "/api/profile/roles" && method === "POST") {
+    const body = await readJson(req);
+    const roles = Array.isArray(body["roles"]) ? body["roles"].map(String) : [];
+    await setRoles(store, roles);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ roles }));
+    return;
+  }
 
   // --- conversation bridge (SSE) ---
   if (url === "/api/express" && method === "POST") {

@@ -114,6 +114,39 @@ $("#composer").addEventListener("submit", (e) => {
   if (text) express(text).catch((err) => addTurn("error", String(err)));
 });
 
+// ---------- onboarding (first run) ----------
+let profileRoles = [];
+async function initProfile() {
+  const p = await (await fetch("/api/profile")).json();
+  profileRoles = p.roles || [];
+  if (!p.onboarded) showOnboarding(p.availableRoles);
+}
+function showOnboarding(available) {
+  const box = $("#onboarding");
+  const chips = $("#role-chips");
+  const chosen = new Set();
+  chips.innerHTML = "";
+  for (const r of available) {
+    const b = document.createElement("button");
+    b.className = "role-chip";
+    b.innerHTML = `<b>${r.label}</b><span class="muted">${r.blurb}</span>`;
+    b.addEventListener("click", () => {
+      if (chosen.has(r.id)) { chosen.delete(r.id); b.classList.remove("on"); }
+      else { chosen.add(r.id); b.classList.add("on"); }
+    });
+    chips.appendChild(b);
+  }
+  box.hidden = false;
+  const finish = async (roles) => {
+    await post("/api/profile/roles", { roles });
+    profileRoles = roles;
+    box.hidden = true;
+  };
+  $("#onboard-continue").onclick = () => finish([...chosen]);
+  $("#onboard-skip").onclick = () => finish([]);
+}
+initProfile();
+
 // ---------- model panel ----------
 const panel = $("#models-panel");
 const scrim = $("#scrim");

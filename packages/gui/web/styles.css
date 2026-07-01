@@ -116,4 +116,13 @@ body {
 .prog-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
 code { background: #0e0e12; padding: 1px 5px; border-radius: 4px; }
 .sep { border: 0; border-top: 1px solid #2a2a31; margin: 16px 0; }
+#onboarding { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; }
+.onboard-card { max-width: 640px; text-align: center; padding: 24px; }
+.onboard-card h1 { margin: 0 0 6px; }
+.role-chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
+.role-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; border: 1px solid #2a2a31; border-radius: 10px; background: var(--panel); color: var(--ink); cursor: pointer; text-align: left; }
+.role-chip.on { border-color: var(--accent); background: #1b2130; }
+.onboard-actions { display: flex; gap: 12px; justify-content: center; align-items: center; }
+#onboard-continue { background: var(--accent); color: #0e0e12; border: 0; border-radius: 8px; padding: 8px 20px; font-weight: 600; cursor: pointer; }
+.link { background: transparent; border: 0; color: var(--muted); cursor: pointer; }
 #reset-all { background: #f7768e; color: #0e0e12; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
