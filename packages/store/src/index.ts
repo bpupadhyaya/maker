@@ -8,3 +8,5 @@ export {
   recordTaste,
   getTaste,
 } from "./taste.ts";
+export { writeHandoff } from "./handoff-writer.ts";
+export type { HandoffBundle } from "./handoff-writer.ts";
