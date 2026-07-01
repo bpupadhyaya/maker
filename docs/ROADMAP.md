@@ -114,7 +114,8 @@ Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
 - ✅ P2 llama.cpp inference backend — `llamaCppInference` hits a local `llama-server`
   OpenAI-compatible `/v1/chat/completions` (streaming) + `/health`, loopback, no API key; smoke:
   streams, plugs into a session, health-gated (running server = `needs-user`)
-- ⏭️ P3 MLX-on-Mac inference backend seam
+- ✅ P3 MLX-on-Mac inference backend — `mlxInference` reuses the OpenAI-compatible adapter over a
+  local `mlx_lm.server`, gated to Apple Silicon; smoke: streams on Apple Silicon, unavailable off it
 - ⏭️ P4 expand catalog: many OSS models + GGUF/Ollama/MLX options
 - ⏭️ P5 backend/installer chooser (auto by platform + availability; sideload fallback) wired into `/setup`
 - ⏭️ P6 README: install steps + model-configuration options
