@@ -63,8 +63,9 @@ of Ink). Cross-package imports currently use relative paths (`../../engine/...`)
 
 **Engineering guardrails (all milestones):**
 - Engine is **headless + interface-first** — GUI/TUI/inference/runtime are thin clients/adapters.
-- Each milestone ships with a **test that is its acceptance gate** (this also seeds Maker's own
-  verification ethos).
+- **Verify via a quick runtime smoke, not a unit-test suite** (owner directive 2026-06-30:
+  tests delay the product). Run the new code once to confirm it works; rely on the compiler and
+  the always-runnable design. (Existing tests through M1.2 are kept as a free safety net.)
 - Nothing bundles the model; large native pieces are fetched/provisioned.
 
 | # | Milestone | Goal (one line) | Acceptance gate (verifiable) | Key risk |
