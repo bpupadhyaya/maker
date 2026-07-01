@@ -27,7 +27,10 @@ model → synthesize → build → run → `tool-running`, plus the iterate path
 verified by fetching the served tool + confirming an iteration updates it, offline) · ✅ M0.6
 (Brief v0 — `parseBriefBlock`/`mergeBrief`/`renderBrief`; the model may emit a reserved
 ```brief``` JSON block, the goal seeds from the first request, `brief-updated` events flow and
-render as a panel in the REPL; 29 tests green offline). Next: M0.7.
+render as a panel in the REPL; 29 tests green offline) · ✅ M0.7 (persistence — `@maker/store`
+file-based `MemoryStore` under `~/.maker`; `createMaker` persists Brief + tool files each turn
+and `restore()` rebuilds+runs them; build→quit→restore verified by fetch; 32 tests green
+offline). Next: M0.8.
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal

@@ -1,5 +1,6 @@
 import type { InferenceBackend } from "./interfaces/inference.ts";
 import type { ToolRuntime, RunningTool } from "./interfaces/tool-runtime.ts";
+import type { MemoryStore } from "./interfaces/memory.ts";
 import type { Brief } from "./interfaces/brief.ts";
 import { emptyBrief } from "./interfaces/brief.ts";
 import type { MakerEvent } from "./events.ts";
@@ -12,6 +13,8 @@ export interface MakerDeps {
   readonly runtime: ToolRuntime;
   /** Stable id for the single tool this Maker builds (M0.5 = one tool). */
   readonly toolId?: string;
+  /** Optional local persistence; when present, the Brief + tool survive restarts. */
+  readonly store?: MemoryStore;
 }
 
 export interface Maker {
@@ -25,6 +28,12 @@ export interface Maker {
   readonly running: RunningTool | undefined;
   /** Maker's living understanding — the Brief. */
   readonly brief: Brief;
+  /**
+   * Reload the Brief + last tool from the store (if any) and rebuild+run the
+   * tool. Returns whether anything was restored. The "Evolve" seed: return
+   * later and everything is still here.
+   */
+  restore(): Promise<boolean>;
   stop(): Promise<void>;
 }
 
@@ -43,6 +52,16 @@ export function createMaker(deps: MakerDeps): Maker {
   });
   let current: RunningTool | undefined;
   let brief: Brief = emptyBrief();
+  let lastFiles: Record<string, string> | undefined;
+
+  const briefKey = `${toolId}:brief`;
+  const filesKey = `${toolId}:files`;
+
+  async function persist(): Promise<void> {
+    if (!deps.store) return;
+    await deps.store.set(briefKey, brief);
+    if (lastFiles) await deps.store.set(filesKey, lastFiles);
+  }
 
   async function* express(request: string): AsyncIterable<MakerEvent> {
     let assembled = "";
@@ -65,7 +84,10 @@ export function createMaker(deps: MakerDeps): Maker {
     }
 
     const files = synthesizeFiles(assembled);
-    if (Object.keys(files).length === 0) return; // a plain conversational turn
+    if (Object.keys(files).length === 0) {
+      await persist(); // a plain conversational turn may still have moved the Brief
+      return;
+    }
 
     // Always-runnable: tear down the previous tool only once the new one is ready
     // to replace it, so a failed rebuild never leaves the user with nothing.
@@ -73,8 +95,23 @@ export function createMaker(deps: MakerDeps): Maker {
     const next = await deps.runtime.run(built);
     if (current) await current.stop();
     current = next;
+    lastFiles = files;
+    await persist();
 
     yield { type: "tool-running", url: current.url };
+  }
+
+  async function restore(): Promise<boolean> {
+    if (!deps.store) return false;
+    const savedBrief = await deps.store.get<Brief>(briefKey);
+    const savedFiles = await deps.store.get<Record<string, string>>(filesKey);
+    if (savedBrief) brief = savedBrief;
+    if (savedFiles && Object.keys(savedFiles).length > 0) {
+      lastFiles = savedFiles;
+      const built = await deps.runtime.build({ id: toolId, files: savedFiles });
+      current = await deps.runtime.run(built);
+    }
+    return Boolean(savedBrief) || current !== undefined;
   }
 
   return {
@@ -85,6 +122,7 @@ export function createMaker(deps: MakerDeps): Maker {
     get brief() {
       return brief;
     },
+    restore,
     async stop() {
       if (current) {
         await current.stop();

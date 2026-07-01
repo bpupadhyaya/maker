@@ -1,0 +1,15 @@
+{
+  "name": "@maker/store",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local, offline persistence for Maker — a file-based MemoryStore under the Maker home.",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@maker/engine": "*"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}
