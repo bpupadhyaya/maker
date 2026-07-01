@@ -20,6 +20,7 @@ import {
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting,
+  recordSession, recordToolBuilt, recordTokens, getStats,
 } from "../store/src/index.ts";
 import type { Settings } from "../store/src/index.ts";
 import type { HookEvent } from "../store/src/index.ts";
@@ -165,9 +166,11 @@ export async function startServer(
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
       await runHooks(store, "tool-built", { toolId });
+      await recordToolBuilt(store);
     },
   });
   await maker.restore();
+  await recordSession(store);
   const scheduleRunner = startScheduleRunner(maker, store);
 
   const server = http.createServer((req, res) => {
@@ -319,6 +322,13 @@ async function handle(
     return;
   }
 
+  // --- usage stats (H5.9) ---
+  if (url === "/api/stats" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(await getStats(store)));
+    return;
+  }
+
   // --- settings (H5.8) ---
   if (url === "/api/settings" && method === "GET") {
     res.setHeader("content-type", "application/json");
@@ -359,6 +369,7 @@ async function handle(
       if (macro !== undefined) request = macro;
     }
     await recordPrompt(store, request);
+    await recordTokens(store, Math.ceil(request.length / 4));
     sse(res);
     try {
       for await (const ev of maker.express(request)) {

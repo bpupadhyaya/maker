@@ -18,6 +18,7 @@ import {
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting,
+  recordSession, recordToolBuilt, recordTokens, getStats,
 } from "../../store/src/index.ts";
 import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
@@ -103,9 +104,11 @@ export async function main(): Promise<void> {
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
       await runHooks(store, "tool-built", { toolId });
+      await recordToolBuilt(store);
     },
   });
   await maker.restore();
+  await recordSession(store);
 
   const write = (text: string): void => {
     process.stdout.write(text);
@@ -316,6 +319,17 @@ export async function main(): Promise<void> {
     }
   };
 
+  async function cmdStats(): Promise<void> {
+    const s = await getStats(store);
+    write("\nYour Maker usage (local only):\n");
+    write(`  sessions      ${s.sessions}\n`);
+    write(`  tools built   ${s.toolsBuilt}\n`);
+    write(`  active days   ${s.activeDays}\n`);
+    write(`  tokens (est)  ~${s.tokens}\n`);
+    if (s.since) write(`  since         ${s.since}\n`);
+    write("\n(Nothing here leaves your device.)\n");
+  }
+
   async function cmdSettings(): Promise<void> {
     const s = await getSettings(store);
     write("\nSettings:\n");
@@ -426,9 +440,13 @@ export async function main(): Promise<void> {
       "/search": cmdSearch,
       "/settings": cmdSettings,
       "/set": cmdSet,
+      "/stats": cmdStats,
     },
     resolveMacro: (name) => resolveMacro(store, name),
-    onRequest: (line) => void recordPrompt(store, line),
+    onRequest: (line) => {
+      void recordPrompt(store, line);
+      void recordTokens(store, Math.ceil(line.length / 4));
+    },
     onEvent,
   });
   scheduleRunner.stop();

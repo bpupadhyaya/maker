@@ -193,6 +193,25 @@ $("#set-theme").addEventListener("change", (e) => saveSetting("theme", e.target.
 $("#set-approval").addEventListener("change", (e) => saveSetting("approvalMode", e.target.value));
 loadSettings();
 
+// ---------- usage stats ----------
+const statsPanel = $("#stats-panel");
+function openStats() { statsPanel.hidden = false; scrim.hidden = false; loadStats(); }
+function closeStats() { statsPanel.hidden = true; scrim.hidden = true; }
+$("#stats-btn").addEventListener("click", openStats);
+$("#stats-close").addEventListener("click", closeStats);
+async function loadStats() {
+  const s = await (await fetch("/api/stats")).json();
+  const cells = [
+    ["Sessions", s.sessions],
+    ["Tools built", s.toolsBuilt],
+    ["Active days", s.activeDays],
+    ["Tokens (est)", "~" + s.tokens],
+  ];
+  $("#stats-grid").innerHTML =
+    cells.map(([k, v]) => `<div class="stat"><div class="stat-val">${v}</div><div class="stat-key">${k}</div></div>`).join("") +
+    (s.since ? `<p class="muted">since ${s.since}</p>` : "");
+}
+
 // ---------- onboarding (first run) ----------
 let profileRoles = [];
 async function initProfile() {
@@ -233,7 +252,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); closeSettings(); });
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); closeSettings(); closeStats(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});

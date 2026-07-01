@@ -23,6 +23,7 @@
       <button id="sched-btn" title="Schedules">⏱ Schedules</button>
       <button id="hooks-btn" title="Hooks">⚡ Hooks</button>
       <button id="search-btn" title="History &amp; search">🔍 History</button>
+      <button id="stats-btn" title="Usage">📊 Usage</button>
       <button id="settings-btn" title="Settings">⚙ Settings</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
@@ -184,6 +185,16 @@
         <select id="set-approval"><option value="auto">auto — build first</option><option value="ask">ask — confirm first</option></select>
       </label>
       <p class="muted">The active model is set in the <b>⛁ Models</b> panel.</p>
+    </aside>
+
+    <!-- Usage stats -->
+    <aside id="stats-panel" hidden aria-label="usage">
+      <div class="panel-head">
+        <h2>Your usage</h2>
+        <button id="stats-close">✕</button>
+      </div>
+      <p class="muted">Local only — nothing here leaves your device.</p>
+      <div id="stats-grid" class="stats-grid"></div>
     </aside>
     <div id="scrim" hidden></div>
 

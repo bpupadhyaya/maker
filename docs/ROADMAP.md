@@ -146,7 +146,15 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   active model); GUI ⚙ Settings panel + REST (`/api/settings` GET/POST). Theme applied via
   `data-theme` (dark/light CSS vars); approvalMode wired in the GUI (ask → confirm-before-build).
   Smoke: store, TUI, GUI, theme. (TUI approval-confirm + effort→model params = follow-up.)
-- ⏭️ H5.9 local usage stats
+- ✅ H5.9 local usage stats — `@maker/store` `stats.ts` (recordSession/recordToolBuilt/recordTokens/
+  getStats → sessions/toolsBuilt/tokens/activeDays/since; active-days as a YYYY-MM-DD set; app-space,
+  privacy-safe). Wired: session on TUI launch + GUI startServer; tool on `onToolBuilt`; rough tokens
+  (≈len/4) via `onRequest`/`/api/express`. TUI `/stats`; GUI 📊 Usage panel + `/api/stats`. Smoke:
+  store, TUI, GUI. **Nothing leaves the device.**
+
+**H5 COMPLETE** — all 9 offline-relevant Codex/Claude-Code parity features shipped (role onboarding,
+quick-start templates, projects, macros, local scheduling, hooks, history+search, settings, local
+stats), each in GUI + TUI, 100% offline, fully free/MIT (no gating). Suite 56/56 green.
 
 ## End-user readiness (G-series) — runnable GUI, TUI turnkey, model management
 

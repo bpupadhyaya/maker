@@ -39,6 +39,8 @@ export { recordPrompt, listPrompts, historyOverview, searchHistory } from "./his
 export type { HistoryHit } from "./history.ts";
 export { getSettings, setSetting, DEFAULT_SETTINGS } from "./settings.ts";
 export type { Settings } from "./settings.ts";
+export { recordSession, recordToolBuilt, recordTokens, getStats } from "./stats.ts";
+export type { Stats } from "./stats.ts";
 export {
   registerTool,
   listTools,
