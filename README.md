@@ -126,9 +126,27 @@ space.
 
 ## Uninstall (complete cleanup)
 
-The uninstaller removes the `maker` launcher, the **app icon**, **and all of Maker's app data** —
-every downloaded model, built tool, and memory under `~/.maker` — and reports the space freed. It
-does **not** touch Node or Ollama (you installed those).
+Whichever way you installed, cleanup removes **all of Maker's data** — every downloaded model,
+built tool, and memory under `~/.maker` — and reports the space freed. It does **not** touch Node
+or Ollama (you installed those). Because Maker keeps its data in one folder, cleanup is simple.
+
+### If you installed the app (`.dmg` / `.msi` / `.AppImage`)
+
+Dragging the app to the Trash **leaves your models behind** — use the uninstaller for a complete
+cleanup (it removes the app + `~/.maker` + the small macOS per-app files):
+
+```sh
+# macOS — double-click Uninstall Maker, or run:
+bash scripts/uninstall.command       # add --yes to skip the prompt; DRY_RUN=1 to preview
+```
+
+Then Trash the downloaded `Maker*.dmg` from `~/Downloads`. *(Prefer to do it by hand? Trash
+`/Applications/Maker.app`, then `rm -rf ~/.maker`.)* Windows/Linux app installers: remove Maker
+from Apps/your package manager, then delete `~/.maker`.
+
+### If you ran from source (via `scripts/install.sh`)
+
+This removes the `maker` launcher, the app icon, and all app data:
 
 ```sh
 # macOS / Linux
@@ -138,7 +156,7 @@ bash scripts/uninstall.sh          # asks to confirm; add --yes to skip
 powershell -ExecutionPolicy Bypass -File scripts\uninstall.ps1    # add -Yes to skip
 ```
 
-That leaves nothing behind except the cloned repo itself — delete it to finish:
+That leaves nothing behind except the cloned repo — delete it to finish:
 
 ```sh
 cd .. && rm -rf maker              # macOS / Linux
