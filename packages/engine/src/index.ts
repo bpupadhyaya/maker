@@ -60,3 +60,5 @@ export {
   classifyDomain,
 } from "./domain.ts";
 export type { Domain, DomainKind } from "./domain.ts";
+export { parseRobotPlan, simulateRobot } from "./robotics.ts";
+export type { RobotAction, RobotState, SimResult } from "./robotics.ts";
