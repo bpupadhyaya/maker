@@ -10,3 +10,12 @@ export { compareVersions, upgradeAvailable } from "./versioning.ts";
 export type { InstalledModel } from "./versioning.ts";
 export type { GateResult } from "./offline-gate.ts";
 export { runOfflineGate } from "./offline-gate.ts";
+export { provisionModel } from "./provisioner.ts";
+export type {
+  ModelInstaller,
+  ProvisionProgress,
+  ProvisionResult,
+  ProvisionOptions,
+  ProgressFn,
+} from "./provisioner.ts";
+export { ollamaInstaller } from "./ollama-installer.ts";

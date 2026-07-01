@@ -51,10 +51,19 @@ UI (Talk/Split/Build in the terminal) is deferred to a polish milestone (needs a
 of Ink). Cross-package imports currently use relative paths (`../../engine/...`) until an
 `npm install` wires the workspace symlinks; they can then switch to `@maker/engine`.
 
+**Provisioning UX (added 2026-07-01):** setup is now **app-driven, one action** — `provisionModel()`
+(detect hardware → `selectModel` → download + verify with progress) + the TUI **`/setup`** command
+(and the GUI's first-run "Set up" button call the same flow). `ollamaInstaller` runs the model pull
+*on the user's behalf*; the long-term path bundles a portable llama.cpp so no external runtime is
+needed and the app downloads only the weights. **The user never types `brew`/`ollama` — they trigger
+setup, the app does the rest** (matches DESIGN.md "guided one-tap, not a chore"). Runtime smoke:
+mock installer drives select→download→done, idempotent; live `/setup` runs and reports status.
+
 **`needs-user` (external resources I can't provision autonomously):**
-- **M0.2 real-model check** — code-complete + mock-tested, but verifying a *real* offline
-  completion needs `ollama` installed + a model pulled (`ollama pull qwen2.5-coder:7b`). Not on
-  this machine.
+- **The one online moment** — `/setup` performs the download, but it needs the inference runtime
+  present + network at setup time. v1 drives Ollama (so it needs Ollama installed); the decided
+  long-term fix is to **bundle a portable llama.cpp** in the installer so `/setup` needs only the
+  network, not a pre-installed runtime. Either way the *user* only triggers `/setup`.
 - **M0.3 Ink polish** — the richer Ink terminal UI needs `npm install ink react` (network).
   Deferred; the readline REPL covers M0.3's acceptance today.
 - **M0.8 live GUI** — the tested core + web/Tauri scaffold are in; running the actual window

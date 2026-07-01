@@ -3,6 +3,12 @@ import { pathToFileURL } from "node:url";
 import { createMaker, echoInference, ollamaInference } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
 import { fileMemoryStore, tasteMemory } from "../../store/src/index.ts";
+import {
+  provisionModel,
+  ollamaInstaller,
+  detectHardware,
+  selectModel,
+} from "../../provision/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
 
 /**
@@ -33,18 +39,42 @@ export async function main(): Promise<void> {
     output: process.stdout,
   });
 
-  process.stdout.write(
-    `Maker — terminal (v1), backend=${backendName}. Describe a tool; /exit to quit.\n`,
-  );
-
-  const io = {
-    input: rl,
-    write: (text: string): void => {
-      process.stdout.write(text);
-    },
+  const write = (text: string): void => {
+    process.stdout.write(text);
   };
 
-  await runMakerConversation(maker, io, { prompt: "\n» " });
+  process.stdout.write(
+    `Maker — terminal (v1), backend=${backendName}. Describe a tool; /setup to install your model; /exit to quit.\n`,
+  );
+
+  // First-run: if the model isn't set up yet, guide (don't demand shell commands).
+  const installer = ollamaInstaller();
+  const model = selectModel(detectHardware());
+  if (!(await installer.isInstalled(model))) {
+    write(
+      `\nHeads up: your local model (${model.name}) isn't set up yet. ` +
+        `Type /setup and Maker will download it for you (one step, needs internet once).\n`,
+    );
+  }
+
+  // /setup — app-driven provisioning. The user triggers it; the app does the rest.
+  async function setup(): Promise<void> {
+    write("\nSetting up your model…\n");
+    const result = await provisionModel({
+      installer,
+      onProgress: (p) => {
+        const pct = p.ratio !== undefined ? ` ${Math.round(p.ratio * 100)}%` : "";
+        write(`  ${p.message}${pct}\n`);
+      },
+    });
+    write(result.ok ? "\n✓ Setup complete.\n" : `\n✗ ${result.detail}\n`);
+  }
+
+  const io = { input: rl, write };
+  await runMakerConversation(maker, io, {
+    prompt: "\n» ",
+    commands: { "/setup": setup },
+  });
   await maker.stop();
   rl.close();
 }
