@@ -7,14 +7,7 @@
     "frontendDist": "../web"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Maker",
-        "width": 1100,
-        "height": 720,
-        "minWidth": 420
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

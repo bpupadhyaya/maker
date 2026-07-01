@@ -124,7 +124,10 @@ list/disk/switch/remove clean; removing the active model clears it).
   persisted), `/remove <id>` (clean, frees space); the controller gained an `onEvent` hook so the
   REPL **auto-opens the living tool in the browser** on `tool-running`; the active model is
   persisted and the Ollama backend uses its tag. Smoke: list/use/remove side effects verified.
-- ⏭️ G5 Tauri native shell wired (compile/sign = needs-user)
+- ✅ G5 Tauri native shell wired — `src-tauri/main.rs` runs the SAME Node GUI server
+  (`serve.ts`) as a sidecar and opens a native window at its URL (native app == the browser GUI,
+  in a real window), killing the sidecar on exit; `tauri.conf.json` validated. Compiling +
+  signing = `needs-user` (Rust/Tauri toolchain + certs).
 - ⏭️ G6 README — honest install (clone repo + run), model management, env vars
 
 ## Finishing the product (P-series) — Ollama-free setup + many model options
