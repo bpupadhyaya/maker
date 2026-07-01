@@ -103,13 +103,16 @@ invisible/expensive gaps → propose-a-default clarifiers, bounded; visible/chea
 guesses; memory-skippable; 51 tests green offline) · ✅ M1.2 (verification v1 — serializable
 checks (status/contains/notContains) from a smoke check + a reserved ```checks``` block;
 `runChecks` fetches the running tool and evaluates them; violations report as concrete repros;
-verified against the real runtime, 56 tests green offline).
+verified against the real runtime, 56 tests green offline) · ✅ M1.3 (taste-memory — `@maker/store`
+`taste.ts`: `recordDecision`/`knownGapIds`/`recordTaste`/`getTaste` persist ratified decisions +
+taste locally; `knownGapIds` feeds `detectGaps({known})` so decided gaps aren't re-asked; runtime
+smoke: 3 clarifiers → 0 after deciding).
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
 | **M1.1** | Gap-detection v1 | ask-and-clarify: classify kind → archetype gaps → clarifiers + guesses | ✅ done (51 tests) | med |
 | **M1.2** | Verification v1 | serializable checks (smoke + ratified ```checks``` block); run each ring against the running tool; report violations | ✅ done (56 tests; violation caught vs real runtime, concrete repro) | high |
-| **M1.3** | Taste-memory | record ratified decisions/taste in the store; apply as defaults → shrink gap-detection's questions over time | a decision made once isn't asked again (feeds `detectGaps` `known`) | med |
+| **M1.3** | Taste-memory | record ratified decisions/taste in the store; apply as defaults → shrink gap-detection's questions over time | ✅ done (smoke: 3 clarifiers → 0 after deciding) | med |
 | **M1.4** | Hand-off | name the tool + generate a README; make it ejectable | build → hand-off produces a named dir with code + README + Brief | low |
 | **M1.5** | Integrate + polish | wire gap-detection/verification/taste into `createMaker`; the TUI REPL builds real tools; front-ends render clarifiers | end-to-end: express → clarify → build → verify → persist, in the REPL | high |
 
