@@ -101,6 +101,22 @@ mechanical.
 
 ---
 
+## Finishing the product (P-series) — Ollama-free setup + many model options
+
+Goal: setup needs only a network connection (no pre-installed runtime), with many open-source
+model + integration options. Then the README.
+
+**Progress:** ✅ P1 (direct GGUF/llama.cpp installer — `ggufInstaller` streams a model's `.gguf`
+to `~/.maker/models` while hashing, checksum-verifies, behind the `ModelInstaller` seam;
+`provisionModel` uses it with no Ollama; catalog gained `ollama`/`gguf`/`mlx` per-model options.
+Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
+
+- ⏭️ P2 llama.cpp inference backend (local llama-server HTTP)
+- ⏭️ P3 MLX-on-Mac inference backend seam
+- ⏭️ P4 expand catalog: many OSS models + GGUF/Ollama/MLX options
+- ⏭️ P5 backend/installer chooser (auto by platform + availability; sideload fallback) wired into `/setup`
+- ⏭️ P6 README: install steps + model-configuration options
+
 ## H1 — v1 useful builder
 
 **Definition of done:** a non-developer builds a genuinely useful personal tool offline, free,

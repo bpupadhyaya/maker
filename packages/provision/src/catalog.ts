@@ -18,6 +18,12 @@ export interface ModelEntry {
   readonly version: string;
   /** Official source (e.g. an Ollama tag or a Hugging Face URL). */
   readonly source: string;
+  /** Ollama tag, if available (e.g. "qwen2.5-coder:7b"). */
+  readonly ollama?: string;
+  /** Direct GGUF download URL (llama.cpp path — needs only network, no Ollama). */
+  readonly gguf?: string;
+  /** MLX repo id for Apple Silicon (e.g. "mlx-community/..."). */
+  readonly mlx?: string;
   /** Pinned checksum of the fetched artifact (filled in per real release). */
   readonly sha256?: string;
 }

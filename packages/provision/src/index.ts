@@ -19,3 +19,5 @@ export type {
   ProgressFn,
 } from "./provisioner.ts";
 export { ollamaInstaller } from "./ollama-installer.ts";
+export { ggufInstaller } from "./gguf-installer.ts";
+export type { GgufOptions } from "./gguf-installer.ts";
