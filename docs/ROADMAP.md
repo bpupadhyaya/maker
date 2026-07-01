@@ -15,6 +15,9 @@ chosen so there's an end-to-end vertical slice as early as possible, then depth.
 **Definition of done:** converse → a running small web tool appears → iterate one ring →
 it persists — **fully offline**, from both the TUI and the GUI.
 
+**Progress:** ✅ M0.0 (monorepo scaffold + CI skeleton) · ✅ M0.1 (engine core + the four
+interfaces + echo backend + 5 passing tests, `node --test`, zero install, offline). Next: M0.2.
+
 **Engineering guardrails (all milestones):**
 - Engine is **headless + interface-first** — GUI/TUI/inference/runtime are thin clients/adapters.
 - Each milestone ships with a **test that is its acceptance gate** (this also seeds Maker's own

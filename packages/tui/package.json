@@ -1,0 +1,9 @@
+{
+  "name": "@maker/tui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Maker's terminal front-end (Ink). A thin client over @maker/engine. Implemented in M0.3.",
+  "license": "MIT",
+  "main": "src/index.ts"
+}

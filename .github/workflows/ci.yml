@@ -1,0 +1,19 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # H0/M0.0: single-runner skeleton. The full macOS/Windows/Linux matrix +
+    # packaging + the network-off release gate arrive with M0.9.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run tests (Node native TS + built-in test runner; no install needed)
+        run: node --test "packages/**/test/**/*.test.ts"

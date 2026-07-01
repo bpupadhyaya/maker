@@ -1,0 +1,9 @@
+{
+  "name": "@maker/gui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Maker's GUI: a Tauri shell + web UI, thin client over @maker/engine. Implemented in M0.8.",
+  "license": "MIT",
+  "main": "src/index.ts"
+}

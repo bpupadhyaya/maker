@@ -1,0 +1,22 @@
+{
+  "name": "maker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An AI-native maker: build tools by conversation, 100% on-device and offline.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "test": "node --test \"packages/**/test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p packages/engine/tsconfig.json",
+    "lint": "echo \"lint: TODO (added in a later milestone)\""
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}
