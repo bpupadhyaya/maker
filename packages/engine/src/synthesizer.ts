@@ -34,13 +34,15 @@ export function synthesizeFiles(modelText: string): Record<string, string> {
 
   for (let m = fence.exec(modelText); m !== null; m = fence.exec(modelText)) {
     const info = (m[1] ?? "").trim();
+    const lang = info.split(/\s+/)[0]?.toLowerCase() ?? "";
+    if (lang === "brief") continue; // reserved: the Brief block, not a tool file
+
     let body = m[2] ?? "";
     if (body.endsWith("\n")) body = body.slice(0, -1);
 
     const pathMatch = /path=(\S+)/.exec(info);
     let filename = pathMatch?.[1];
     if (filename === undefined) {
-      const lang = info.split(/\s+/)[0]?.toLowerCase() ?? "";
       filename =
         LANG_DEFAULTS[lang] ??
         (usedIndex ? `file-${Object.keys(files).length}.txt` : "index.html");

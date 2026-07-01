@@ -1,8 +1,11 @@
 import type { InferenceBackend } from "./interfaces/inference.ts";
 import type { ToolRuntime, RunningTool } from "./interfaces/tool-runtime.ts";
+import type { Brief } from "./interfaces/brief.ts";
+import { emptyBrief } from "./interfaces/brief.ts";
 import type { MakerEvent } from "./events.ts";
 import { createSession } from "./session.ts";
 import { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
+import { parseBriefBlock, mergeBrief } from "./brief-manager.ts";
 
 export interface MakerDeps {
   readonly inference: InferenceBackend;
@@ -20,6 +23,8 @@ export interface Maker {
   express(request: string): AsyncIterable<MakerEvent>;
   /** The currently running tool, if any. */
   readonly running: RunningTool | undefined;
+  /** Maker's living understanding — the Brief. */
+  readonly brief: Brief;
   stop(): Promise<void>;
 }
 
@@ -37,6 +42,7 @@ export function createMaker(deps: MakerDeps): Maker {
     systemPrompt: MAKER_SYSTEM_PROMPT,
   });
   let current: RunningTool | undefined;
+  let brief: Brief = emptyBrief();
 
   async function* express(request: string): AsyncIterable<MakerEvent> {
     let assembled = "";
@@ -48,6 +54,15 @@ export function createMaker(deps: MakerDeps): Maker {
       yield ev;
     }
     if (errored) return;
+
+    // Update the Brief: apply any model-emitted brief block; seed the goal from
+    // the first request if still unset.
+    const patch = parseBriefBlock(assembled) ?? {};
+    if (patch.goal === undefined && brief.goal === "") patch.goal = request;
+    if (Object.keys(patch).length > 0) {
+      brief = mergeBrief(brief, patch);
+      yield { type: "brief-updated", brief };
+    }
 
     const files = synthesizeFiles(assembled);
     if (Object.keys(files).length === 0) return; // a plain conversational turn
@@ -66,6 +81,9 @@ export function createMaker(deps: MakerDeps): Maker {
     express,
     get running() {
       return current;
+    },
+    get brief() {
+      return brief;
     },
     async stop() {
       if (current) {

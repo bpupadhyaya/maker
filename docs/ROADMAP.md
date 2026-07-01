@@ -24,7 +24,10 @@ Maker-home dir and serves it on a loopback port via Node's built-in http, path-t
 sandboxed; 19 tests green, verified with real local `fetch`, offline) · ✅ M0.5 (synthesis loop
 — `synthesizeFiles()` parses the model's fenced code blocks → a ToolSpec; `createMaker()` wires
 model → synthesize → build → run → `tool-running`, plus the iterate path; 23 tests green,
-verified by fetching the served tool + confirming an iteration updates it, offline). Next: M0.6.
+verified by fetching the served tool + confirming an iteration updates it, offline) · ✅ M0.6
+(Brief v0 — `parseBriefBlock`/`mergeBrief`/`renderBrief`; the model may emit a reserved
+```brief``` JSON block, the goal seeds from the first request, `brief-updated` events flow and
+render as a panel in the REPL; 29 tests green offline). Next: M0.7.
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal

@@ -21,3 +21,4 @@ export type { OllamaOptions, FetchLike } from "./backends/ollama-inference.ts";
 export { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
 export { createMaker } from "./maker.ts";
 export type { Maker, MakerDeps } from "./maker.ts";
+export { parseBriefBlock, mergeBrief, renderBrief } from "./brief-manager.ts";

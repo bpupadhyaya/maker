@@ -1,4 +1,5 @@
 import type { MakerEvent } from "../../engine/src/index.ts";
+import { renderBrief } from "../../engine/src/index.ts";
 
 /**
  * Pure formatting of a MakerEvent into terminal text. Kept separate from I/O so
@@ -17,7 +18,6 @@ export function renderEvent(ev: MakerEvent): string {
     case "tool-running":
       return `\n▶  running at ${ev.url}`;
     case "brief-updated":
-      // The Brief gets its own surface in later milestones (M0.6+).
-      return "";
+      return `\n─ Brief ───────────────────\n${renderBrief(ev.brief)}\n───────────────────────────\n`;
   }
 }
