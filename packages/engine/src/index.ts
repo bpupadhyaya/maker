@@ -44,3 +44,5 @@ export { parsePack } from "./pack.ts";
 export type { CapabilityPack, PackTemplate, PackRegistry } from "./pack.ts";
 export { importTool } from "./tool-export.ts";
 export type { ToolExport } from "./tool-export.ts";
+export { textInput, voiceInput, sketchInput } from "./input.ts";
+export type { InputModality, InputRequest, Transcriber, SketchDescriber } from "./input.ts";

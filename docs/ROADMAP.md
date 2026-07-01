@@ -163,9 +163,28 @@ bundles. Next: **H3 (reach & richness — multimodal input, mobile, opt-in cloud
 | **M2.4** | Capability packs | offline packs (templates/archetypes) with a format + apply | ✅ done (smoke: parse/install/lookup; download = needs-user) | med |
 | **M2.5** | Tool export/import | export a tool (code + Brief + checks + contract) and import it back | ✅ done (smoke: export → JSON → import → runnable, metadata intact) | med |
 
-## H3–H4
+## H3 — reach & richness
 
-Milestone breakdowns to be drafted when their horizon is next (scope lives in `DESIGN.md` →
-*Product scope*). H3 = reach/multimodal/mobile; H4 = beyond software / robotics.
+**Definition of done:** Maker meets the user at more of their native expression (voice, sketch)
+and reaches more form factors (mobile, desktop), with opt-in cloud for the hard 20% and a rising
+local-model floor. Many parts are external-resource gated — seams built offline, live parts
+`needs-user`.
+
+**Progress:** ✅ M3.1 (multimodal input seam — `InputRequest` normalizes text/voice/sketch to a
+text request via injectable transcriber/describer; engine stays modality-agnostic; runtime smoke:
+voice-derived text builds a tool. Real local Whisper/vision = `needs-user`).
+
+| # | Milestone | Goal | Acceptance gate | Risk |
+|---|---|---|---|---|
+| **M3.1** | Multimodal input seam | text/voice/sketch → one InputRequest | ✅ done (smoke: all modalities normalize; voice builds a tool) | med |
+| **M3.2** | Opt-in cloud connect | a CloudBackend (InferenceBackend), off by default, honest "reach out once" | smoke: cloud backend behind the seam (real call = needs-user) | med |
+| **M3.3** | Model auto-upgrade | catalog versioning + an upgrade check that never breaks offline | smoke: newer catalog entry → upgrade offered | low |
+| **M3.4** | Output targets | target abstraction (web/PWA now; mobile/desktop = needs-user toolchains) | smoke: web/PWA target emitted; others marked needs-user | med |
+| **M3.5** | Mobile thin-client pairing | pairing protocol scaffold (desktop workshop ↔ phone) | smoke: pairing handshake logic (real devices = needs-user) | high |
+
+## H4
+
+Milestone breakdown to be drafted when its horizon is next (scope lives in `DESIGN.md` →
+*Product scope*). H4 = beyond software / robotics.
 
 [`DESIGN.md`]: ./DESIGN.md
