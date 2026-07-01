@@ -34,4 +34,5 @@ export {
 } from "./verification.ts";
 export type { Check, Assertion, CheckContext, CheckResult } from "./verification.ts";
 export { slugName, renderReadme, buildManifest } from "./handoff.ts";
-export type { HandoffManifest } from "./handoff.ts";
+export type { HandoffManifest, HandoffData } from "./handoff.ts";
+export type { TasteMemory } from "./taste-memory.ts";

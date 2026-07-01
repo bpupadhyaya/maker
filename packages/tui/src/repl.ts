@@ -1,11 +1,9 @@
 import * as readline from "node:readline";
 import { pathToFileURL } from "node:url";
-import {
-  createSession,
-  echoInference,
-  ollamaInference,
-} from "../../engine/src/index.ts";
-import { runConversation } from "./controller.ts";
+import { createMaker, echoInference, ollamaInference } from "../../engine/src/index.ts";
+import { localWebRuntime } from "../../runtime/src/index.ts";
+import { fileMemoryStore, tasteMemory } from "../../store/src/index.ts";
+import { runMakerConversation } from "./controller.ts";
 
 /**
  * The M0.3 terminal entrypoint: a zero-dependency readline REPL, a thin client
@@ -21,11 +19,14 @@ export async function main(): Promise<void> {
   const inference =
     backendName === "ollama" ? ollamaInference() : echoInference();
 
-  const session = createSession({
+  const store = fileMemoryStore();
+  const maker = createMaker({
     inference,
-    systemPrompt:
-      "You are Maker, a collaborator that builds tools by conversation.",
+    runtime: localWebRuntime(),
+    store,
+    taste: tasteMemory(store),
   });
+  await maker.restore();
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -33,7 +34,7 @@ export async function main(): Promise<void> {
   });
 
   process.stdout.write(
-    `Maker — terminal (M0.3), backend=${backendName}. Type /exit to quit.\n`,
+    `Maker — terminal (v1), backend=${backendName}. Describe a tool; /exit to quit.\n`,
   );
 
   const io = {
@@ -43,7 +44,8 @@ export async function main(): Promise<void> {
     },
   };
 
-  await runConversation(session, io, { prompt: "\n» " });
+  await runMakerConversation(maker, io, { prompt: "\n» " });
+  await maker.stop();
   rl.close();
 }
 

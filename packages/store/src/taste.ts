@@ -1,4 +1,4 @@
-import type { MemoryStore } from "../../engine/src/index.ts";
+import type { MemoryStore, TasteMemory } from "../../engine/src/index.ts";
 
 /**
  * Taste-memory (DESIGN.md -> "Composition & memory"): taste = accumulated
@@ -54,4 +54,12 @@ export async function getTaste(
   store: MemoryStore,
 ): Promise<Record<string, string>> {
   return (await store.get<Record<string, string>>(PREFS_KEY)) ?? {};
+}
+
+/** Adapt a MemoryStore into the engine's TasteMemory seam for createMaker. */
+export function tasteMemory(store: MemoryStore): TasteMemory {
+  return {
+    knownGapIds: () => knownGapIds(store),
+    recordDecision: (gapId, value) => recordDecision(store, gapId, value),
+  };
 }

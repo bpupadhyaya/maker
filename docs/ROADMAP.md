@@ -109,7 +109,15 @@ taste locally; `knownGapIds` feeds `detectGaps({known})` so decided gaps aren't 
 smoke: 3 clarifiers → 0 after deciding) · ✅ M1.4 (hand-off — engine `slugName`/`renderReadme`/
 `buildManifest` (name + README from the Brief) + `@maker/store` `writeHandoff` writes an
 **ejectable bundle** (tool files + README.md + maker.json); runtime smoke: `tip-calculator`
-bundle written).
+bundle written) · ✅ M1.5 (integrate + polish — `createMaker` now wires gap-detection (clarify
+events + guesses), verification (checks each ring + violations), taste-memory (known-shrinking +
+`decide`), and hand-off (`handoffBundle`); the TUI REPL builds real tools via the full Maker;
+runtime smoke: clarify → build → verify → taste-shrinks → hand-off, plus a live REPL smoke).
+
+### ✅ H1 COMPLETE — the v1 useful builder works.
+Express → clarify the few questions that matter → build the smallest runnable tool → verify it →
+remember decisions (so they aren't re-asked) → hand off a named, documented, ejectable bundle.
+All offline. Next: **H2 (composition & the tool ecosystem).**
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
@@ -117,7 +125,7 @@ bundle written).
 | **M1.2** | Verification v1 | serializable checks (smoke + ratified ```checks``` block); run each ring against the running tool; report violations | ✅ done (56 tests; violation caught vs real runtime, concrete repro) | high |
 | **M1.3** | Taste-memory | record ratified decisions/taste in the store; apply as defaults → shrink gap-detection's questions over time | ✅ done (smoke: 3 clarifiers → 0 after deciding) | med |
 | **M1.4** | Hand-off | name the tool + generate a README; make it ejectable | ✅ done (smoke: named ejectable bundle — code + README + maker.json) | low |
-| **M1.5** | Integrate + polish | wire gap-detection/verification/taste into `createMaker`; the TUI REPL builds real tools; front-ends render clarifiers | end-to-end: express → clarify → build → verify → persist, in the REPL | high |
+| **M1.5** | Integrate + polish | wire gap-detection/verification/taste into `createMaker`; the TUI REPL builds real tools; front-ends render clarifiers | ✅ done (smoke: clarify→build→verify→taste-shrinks→handoff; live REPL) | high |
 
 ## H2–H4
 

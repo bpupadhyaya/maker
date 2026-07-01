@@ -17,6 +17,16 @@ export function renderEvent(ev: MakerEvent): string {
       return `\n⚠  ${ev.message}`;
     case "tool-running":
       return `\n▶  running at ${ev.url}`;
+    case "clarify":
+      return (
+        "\n" +
+        ev.clarifiers.map((c) => `  ? ${c.prompt}`).join("\n") +
+        "\n"
+      );
+    case "checks-run":
+      return ev.violations.length === 0
+        ? `\n✓  ${ev.results.length} checks passed`
+        : "\n" + ev.violations.map((v) => `  ${v}`).join("\n") + "\n";
     case "brief-updated":
       return `\n─ Brief ───────────────────\n${renderBrief(ev.brief)}\n───────────────────────────\n`;
   }

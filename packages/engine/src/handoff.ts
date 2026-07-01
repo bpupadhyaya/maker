@@ -83,3 +83,11 @@ export function buildManifest(
 ): HandoffManifest {
   return { name, brief, checks, createdWith: "maker" };
 }
+
+/** A ready-to-write ejectable bundle (compatible with store's writeHandoff). */
+export interface HandoffData {
+  readonly name: string;
+  readonly files: Readonly<Record<string, string>>;
+  readonly readme: string;
+  readonly manifest: HandoffManifest;
+}
