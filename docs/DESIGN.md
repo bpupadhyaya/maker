@@ -546,6 +546,60 @@ engine and a natural path to systems/robotics backends — but much slower to bu
 pool, and it *loses substrate unification*. Not recommended as the v1 starting point; reachable
 later via Maker's own "fearless rebuild" ethos, migrating hot paths behind the same interfaces.
 
+### Build, packaging & cross-platform (planned)
+
+**One codebase, three (plus) installers — not three products.** Single repo, single source of
+truth, one version number, feature parity. ~95% shared; platform differences are small, isolated
+slivers, never forks. This is the whole reason Tauri + TS was chosen over native-per-OS (which
+would mean 3 apps — Swift/WinUI/GTK — to build and keep at parity).
+
+Platform variance lives in **only two safe places**:
+
+1. **Behind runtime-selected interfaces** — chiefly the `InferenceBackend` (MLX on Mac; llama.cpp
+   Metal/Vulkan/CUDA/CPU elsewhere) and a thin OS layer (paths, process spawn, notifications). The
+   engine calls the interface; *which* impl answers is chosen by detected OS. The other ~95% never
+   knows what OS it's on.
+2. **In build-time config** — the CI matrix and Tauri's per-OS bundler settings. Config, not
+   forked source.
+
+| Layer | Shared? |
+|---|---|
+| TS engine, web UI, tool-runtime logic | ✅ 100% code (UI *rendering* may need per-webview CSS/QA) |
+| Tauri shell (Rust) | ✅ mostly; small `cfg(target_os)` conditionals |
+| Inference backend, OS integration | ⚠️ one interface, per-OS impl (runtime-selected) |
+| Packaging & signing | ❌ per-OS build config (not app code) |
+
+**Build pipeline — per-OS CI runners.** Tauri builds are native per-OS (no clean cross-compile),
+so a **GitHub Actions matrix** (`macos` / `ubuntu` / `windows` runners) with the official
+`tauri-action` builds + packages each in parallel on a tag. **All three OS runners live in CI —
+no need to own Windows/Linux hardware; even Mac notarization runs in CI with secrets.**
+
+| Runner | Artifacts (arm64 + x64) | Trust |
+|---|---|---|
+| macOS (→ universal) | `.dmg` / `.app` | Apple Developer ID + **notarization** (mandatory for Gatekeeper) |
+| Windows | `.msi` (WiX) / `.exe` (NSIS) | **Authenticode** cert (or Azure Trusted Signing) — else SmartScreen |
+| Linux/Unix | `.AppImage` + `.deb` + `.rpm` | none required; build on old glibc for compat |
+
+**Native pieces:** bundle a small portable llama.cpp per platform (Metal/Vulkan/CPU), MLX on
+Apple Silicon; **model still fetched, never bundled**; GPU (CUDA) variants + Bun/Node runtime
+fetched at provisioning → installers stay small on every OS.
+
+**Release gate = the offline self-check as CI:** each runner must pass a **network-off smoke
+build** (build + run a trivial generated tool with networking disabled) before publishing — the
+offline promise enforced per OS.
+
+**Distribution:** direct download (GitHub Releases / site) primary; package managers (Homebrew
+cask, winget/Chocolatey, AppImage/Flatpak/AUR) for frictionless installs; Tauri **signed
+auto-update, optional & never forced** (offline-first). App stores unlikely — Maker spawns
+processes, writes files, runs a local server, and provisions toolchains, which fights store
+sandboxes.
+
+**Cost to budget:** Apple ($99/yr) + Windows code-signing cert (~$100–400/yr or Azure Trusted
+Signing); Linux free. Unsigned = a scary install that undercuts a "free for everyone" tool.
+
+The single-codebase claim covers the **three desktop OSes**; the future mobile thin-client (H3) is
+a different shell but still a thin client over the *same* headless engine.
+
 ## Open questions
 
 These are named but not yet designed — the load-bearing ones:
