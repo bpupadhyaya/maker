@@ -128,6 +128,11 @@ list/disk/switch/remove clean; removing the active model clears it).
   (`serve.ts`) as a sidecar and opens a native window at its URL (native app == the browser GUI,
   in a real window), killing the sidecar on exit; `tauri.conf.json` validated. Compiling +
   signing = `needs-user` (Rust/Tauri toolchain + certs).
+- ✅ G7 install/uninstall scripts — `scripts/install.sh`+`uninstall.sh` (macOS/Linux) and
+  `install.ps1`+`uninstall.ps1` (Windows): install creates a `maker` launcher (no system files);
+  **uninstall is a COMPLETE cleanup** — removes the launcher + all app data (`~/.maker`: models,
+  tools, memory), reports space freed, leaves only the repo. Smoke: install→simulate model→
+  uninstall verified (launcher + app data gone). README documents both.
 - ✅ G6 README — honest install: **clone the repo + run** (GUI `node packages/gui/serve.ts`, TUI
   `node packages/tui/src/repl.ts`), then `/setup`; native installers marked *coming*. Documents
   model management (download/remove/switch, app-space `~/.maker/models`) and env vars

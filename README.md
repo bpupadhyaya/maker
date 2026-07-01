@@ -69,19 +69,32 @@ short `needs-user` list (signed installers, the compiled Tauri window, real voic
 **Requirements:** **Node ≥ 23.6** (Node 26 recommended — it runs the TypeScript sources natively,
 no build step). No other install needed to start.
 
+**Step 1 — clone:**
+
 ```sh
 git clone https://github.com/bpupadhyaya/maker && cd maker
 ```
 
-Then run **either** front-end:
+**Step 2 — install a `maker` command** (creates one launcher in your bin dir; touches no system
+files):
 
 ```sh
-# GUI — opens the app in your browser
-node packages/gui/serve.ts
+# macOS / Linux
+bash scripts/install.sh
 
-# …or the terminal
-node packages/tui/src/repl.ts
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 ```
+
+**Step 3 — run it:**
+
+```sh
+maker        # GUI — opens the app in your browser
+maker tui    # …or the terminal
+```
+
+> Prefer not to install a command? You can always run the front-ends directly:
+> `node packages/gui/serve.ts` (GUI) or `node packages/tui/src/repl.ts` (TUI).
 
 **First run — set up your model:** type **`/setup`** (TUI) or click **⛁ Models → Download** (GUI).
 Maker detects your hardware, picks the right open-source model, downloads it into its own space,
@@ -110,6 +123,30 @@ space.
   total disk usage.
 - **TUI:** `/models` (list installed + available), `/use <id>` (switch), `/remove <id>` (delete to
   free space).
+
+## Uninstall (complete cleanup)
+
+The uninstaller removes the `maker` launcher **and all of Maker's app data** — every downloaded
+model, built tool, and memory under `~/.maker` — and reports the space freed. It does **not** touch
+Node or Ollama (you installed those).
+
+```sh
+# macOS / Linux
+bash scripts/uninstall.sh          # asks to confirm; add --yes to skip
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\uninstall.ps1    # add -Yes to skip
+```
+
+That leaves nothing behind except the cloned repo itself — delete it to finish:
+
+```sh
+cd .. && rm -rf maker              # macOS / Linux
+# Windows:  Remove-Item -Recurse -Force maker
+```
+
+Prefer to do it by hand? Complete removal is just: delete the launcher (`~/.local/bin/maker`, or
+`%LOCALAPPDATA%\Maker\bin\maker.cmd` on Windows), delete `~/.maker`, and delete the repo folder.
 
 ## Model configuration
 
