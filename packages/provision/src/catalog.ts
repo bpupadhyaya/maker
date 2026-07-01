@@ -14,6 +14,8 @@ export interface ModelEntry {
   readonly minMemGB: number;
   readonly approxSizeGB: number;
   readonly license: string;
+  /** Catalog version of this entry — drives auto-upgrade offers. */
+  readonly version: string;
   /** Official source (e.g. an Ollama tag or a Hugging Face URL). */
   readonly source: string;
   /** Pinned checksum of the fetched artifact (filled in per real release). */
@@ -28,6 +30,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     minMemGB: 12,
     approxSizeGB: 7,
     license: "MIT",
+    version: "2.0.0",
     source: "ollama:deepseek-coder-v2",
   },
   {
@@ -37,6 +40,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     minMemGB: 16,
     approxSizeGB: 5,
     license: "Apache-2.0",
+    version: "2.5.0",
     source: "ollama:qwen2.5-coder:7b",
   },
   {
@@ -46,6 +50,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     minMemGB: 32,
     approxSizeGB: 9,
     license: "Apache-2.0",
+    version: "2.5.0",
     source: "ollama:qwen2.5-coder:14b",
   },
   {
@@ -55,6 +60,7 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     minMemGB: 48,
     approxSizeGB: 20,
     license: "Apache-2.0",
+    version: "2.5.0",
     source: "ollama:qwen2.5-coder:32b",
   },
 ];
