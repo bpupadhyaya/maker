@@ -75,8 +75,8 @@ no build step). No other install needed to start.
 git clone https://github.com/bpupadhyaya/maker && cd maker
 ```
 
-**Step 2 — install a `maker` command** (creates one launcher in your bin dir; touches no system
-files):
+**Step 2 — run the installer.** It sets up **both** ways to launch Maker (a `maker` command **and**
+a clickable **app icon**), and offers to download a model right away:
 
 ```sh
 # macOS / Linux
@@ -86,17 +86,17 @@ bash scripts/install.sh
 powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 ```
 
-**Step 3 — run it:**
+**Step 3 — launch Maker any of these ways:**
 
-```sh
-maker        # GUI — opens the app in your browser
-maker tui    # …or the terminal
-```
+- **App icon** — double-click **Maker** in *Applications* (macOS), your app menu (Linux), or the
+  *Start Menu* (Windows).
+- **Command** — `maker` (GUI in your browser) · `maker tui` (terminal) · `maker setup` (download a
+  model).
+- **Direct** (no install) — `node packages/gui/serve.ts` (GUI) or `node packages/tui/src/repl.ts`
+  (TUI).
 
-> Prefer not to install a command? You can always run the front-ends directly:
-> `node packages/gui/serve.ts` (GUI) or `node packages/tui/src/repl.ts` (TUI).
-
-**First run — set up your model:** type **`/setup`** (TUI) or click **⛁ Models → Download** (GUI).
+**Set up your model:** the installer offers to do it; otherwise run **`maker setup`**, type
+**`/setup`** in the TUI, or click **⛁ Models → Download** in the GUI.
 Maker detects your hardware, picks the right open-source model, downloads it into its own space,
 and verifies it. **This is the only step that needs internet** — after it, Maker works fully
 offline. You never type `brew`, `ollama`, or any shell command; you trigger setup, the app does
@@ -126,9 +126,9 @@ space.
 
 ## Uninstall (complete cleanup)
 
-The uninstaller removes the `maker` launcher **and all of Maker's app data** — every downloaded
-model, built tool, and memory under `~/.maker` — and reports the space freed. It does **not** touch
-Node or Ollama (you installed those).
+The uninstaller removes the `maker` launcher, the **app icon**, **and all of Maker's app data** —
+every downloaded model, built tool, and memory under `~/.maker` — and reports the space freed. It
+does **not** touch Node or Ollama (you installed those).
 
 ```sh
 # macOS / Linux

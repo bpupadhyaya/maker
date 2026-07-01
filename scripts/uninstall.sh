@@ -41,6 +41,16 @@ else
   echo "• No launcher at $LAUNCHER"
 fi
 
+# App icon / desktop entry.
+OS="$(uname -s)"
+if [ "$OS" = "Darwin" ]; then
+  APP="${MAKER_APP_DIR:-$HOME/Applications}/Maker.app"
+  if [ -d "$APP" ]; then rm -rf "$APP" && echo "✓ Removed app icon ($APP)"; fi
+elif [ "$OS" = "Linux" ]; then
+  DESK="${MAKER_APP_DIR:-$HOME/.local/share/applications}/maker.desktop"
+  if [ -f "$DESK" ]; then rm -f "$DESK" && echo "✓ Removed app entry ($DESK)"; fi
+fi
+
 if [ -d "$MAKER_HOME" ]; then
   rm -rf "$MAKER_HOME"
   echo "✓ Removed all app data ($MAKER_HOME)"

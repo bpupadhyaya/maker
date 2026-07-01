@@ -31,6 +31,13 @@ if (Test-Path $Launcher) {
   Write-Host "--  No launcher at $Launcher"
 }
 
+# Start Menu shortcut (app icon)
+$Shortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Maker.lnk"
+if (Test-Path $Shortcut) {
+  Remove-Item -Force $Shortcut
+  Write-Host "OK  Removed Start Menu shortcut"
+}
+
 if (Test-Path $MakerHome) {
   Remove-Item -Recurse -Force $MakerHome
   Write-Host "OK  Removed all app data ($MakerHome)"

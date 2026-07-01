@@ -43,12 +43,52 @@ REPO="$REPO_DIR"
 case "\${1:-gui}" in
   gui)            exec node "\$REPO/packages/gui/serve.ts" ;;
   tui)            exec node "\$REPO/packages/tui/src/repl.ts" ;;
-  -h|--help|help) echo "usage: maker [gui|tui]" ;;
-  *)              echo "unknown command: \$1"; echo "usage: maker [gui|tui]"; exit 1 ;;
+  setup)          exec node "\$REPO/packages/tui/src/setup.ts" ;;
+  -h|--help|help) echo "usage: maker [gui|tui|setup]" ;;
+  *)              echo "unknown command: \$1"; echo "usage: maker [gui|tui|setup]"; exit 1 ;;
 esac
 EOF
 chmod +x "$LAUNCHER"
 echo "✓ Installed launcher"
+
+# 3b) Desktop app entry — a clickable icon (macOS .app / Linux .desktop).
+OS="$(uname -s)"
+if [ "$OS" = "Darwin" ]; then
+  APP_DIR="${MAKER_APP_DIR:-$HOME/Applications}"
+  APP="$APP_DIR/Maker.app"
+  mkdir -p "$APP/Contents/MacOS"
+  cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleName</key><string>Maker</string>
+  <key>CFBundleDisplayName</key><string>Maker</string>
+  <key>CFBundleIdentifier</key><string>com.equalinformation.maker</string>
+  <key>CFBundleVersion</key><string>0.0.0</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleExecutable</key><string>maker-launch</string>
+</dict></plist>
+PLIST
+  cat > "$APP/Contents/MacOS/maker-launch" <<LAUNCH
+#!/usr/bin/env bash
+exec "$LAUNCHER" gui
+LAUNCH
+  chmod +x "$APP/Contents/MacOS/maker-launch"
+  echo "✓ Installed app icon: $APP  (double-click to launch)"
+elif [ "$OS" = "Linux" ]; then
+  APP_DIR="${MAKER_APP_DIR:-$HOME/.local/share/applications}"
+  mkdir -p "$APP_DIR"
+  cat > "$APP_DIR/maker.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=Maker
+Comment=Build tools by conversation — on-device, offline
+Exec=$LAUNCHER gui
+Terminal=false
+Categories=Development;Utility;
+DESK
+  echo "✓ Installed app entry: $APP_DIR/maker.desktop  (appears in your app menu)"
+fi
 
 # 3) PATH hint.
 case ":$PATH:" in
@@ -60,10 +100,29 @@ case ":$PATH:" in
     ;;
 esac
 
+# 4) Offer to download a model now (clone → install → ready in one flow).
+DO_SETUP=""
+if [ "${1:-}" = "--setup" ]; then
+  DO_SETUP="y"
+elif [ -t 0 ] && [ "${MAKER_SKIP_SETUP:-}" != "1" ]; then
+  echo
+  printf "Download a model now so Maker is ready to build? (needs internet) [Y/n] "
+  read -r DO_SETUP
+fi
+case "${DO_SETUP:-n}" in
+  y|Y|yes|YES|"")
+    if [ -n "$DO_SETUP" ]; then
+      echo
+      node "$REPO_DIR/packages/tui/src/setup.ts" || echo "(you can run it later:  maker setup)"
+    fi
+    ;;
+  *) : ;;
+esac
+
 echo
 echo "Done. Start Maker:"
-echo "    maker        # GUI in your browser"
-echo "    maker tui    # terminal"
-echo "Then type /setup to download a model."
+echo "    • App icon:  double-click Maker (in Applications / your app menu)"
+echo "    • Command:   maker        (GUI)   ·   maker tui   (terminal)"
+echo "    • Model:     maker setup  (download a model, if you skipped it above)"
 echo
 echo "To remove Maker completely later:  bash $REPO_DIR/scripts/uninstall.sh"
