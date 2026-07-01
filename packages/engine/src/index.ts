@@ -18,3 +18,6 @@ export { echoInference } from "./backends/echo-inference.ts";
 export type { EchoOptions } from "./backends/echo-inference.ts";
 export { ollamaInference } from "./backends/ollama-inference.ts";
 export type { OllamaOptions, FetchLike } from "./backends/ollama-inference.ts";
+export { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
+export { createMaker } from "./maker.ts";
+export type { Maker, MakerDeps } from "./maker.ts";

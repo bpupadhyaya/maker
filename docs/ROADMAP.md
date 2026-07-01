@@ -21,7 +21,10 @@ green offline) · ✅ M0.3 (terminal front-end — zero-dep readline REPL, thin 
 engine; pure render/controller unit-tested; live REPL smoke-tested offline; 14 tests green) ·
 ✅ M0.4 (tool substrate + runtime + sandbox — `@maker/runtime` builds a web/TS tool to a
 Maker-home dir and serves it on a loopback port via Node's built-in http, path-traversal
-sandboxed; 19 tests green, verified with real local `fetch`, offline). Next: M0.5.
+sandboxed; 19 tests green, verified with real local `fetch`, offline) · ✅ M0.5 (synthesis loop
+— `synthesizeFiles()` parses the model's fenced code blocks → a ToolSpec; `createMaker()` wires
+model → synthesize → build → run → `tool-running`, plus the iterate path; 23 tests green,
+verified by fetching the served tool + confirming an iteration updates it, offline). Next: M0.6.
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal
