@@ -40,3 +40,5 @@ export { parseContractBlock, deriveContract } from "./contract.ts";
 export type { ToolContract, Provision, ToolRegistry } from "./contract.ts";
 export { matchTools, snapshotDependency, verifyDependencies } from "./composition.ts";
 export type { ReuseMatch, MatchOptions, DependencySnapshot } from "./composition.ts";
+export { parsePack } from "./pack.ts";
+export type { CapabilityPack, PackTemplate, PackRegistry } from "./pack.ts";

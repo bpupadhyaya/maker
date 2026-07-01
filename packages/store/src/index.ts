@@ -17,3 +17,9 @@ export {
   getTool,
   toolRegistry,
 } from "./contract-registry.ts";
+export {
+  installPack,
+  listPacks,
+  templateFor,
+  packRegistry,
+} from "./pack-registry.ts";
