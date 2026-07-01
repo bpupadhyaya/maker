@@ -19,6 +19,16 @@ export type {
   ProgressFn,
 } from "./provisioner.ts";
 export { ollamaInstaller } from "./ollama-installer.ts";
+export {
+  makerHomeDir,
+  modelsDir,
+  listInstalledModels,
+  modelDiskUsage,
+  removeModel,
+  getActiveModel,
+  setActiveModel,
+} from "./models-store.ts";
+export type { InstalledModel } from "./models-store.ts";
 export { ggufInstaller } from "./gguf-installer.ts";
 export type { GgufOptions } from "./gguf-installer.ts";
 export { sideloadInstaller } from "./sideload-installer.ts";
