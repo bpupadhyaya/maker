@@ -23,6 +23,7 @@
       <button id="sched-btn" title="Schedules">⏱ Schedules</button>
       <button id="hooks-btn" title="Hooks">⚡ Hooks</button>
       <button id="search-btn" title="History &amp; search">🔍 History</button>
+      <button id="settings-btn" title="Settings">⚙ Settings</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
@@ -164,6 +165,25 @@
       <div id="search-results" class="model-list"></div>
       <h3>Recent</h3>
       <div id="history-recent" class="model-list"></div>
+    </aside>
+
+    <!-- Settings -->
+    <aside id="settings-panel" hidden aria-label="settings">
+      <div class="panel-head">
+        <h2>Settings</h2>
+        <button id="settings-close">✕</button>
+      </div>
+      <p class="muted">Local config, stored in <code>~/.maker</code>.</p>
+      <label class="setting">Effort
+        <select id="set-effort"><option>low</option><option>medium</option><option>high</option></select>
+      </label>
+      <label class="setting">Theme
+        <select id="set-theme"><option>dark</option><option>light</option></select>
+      </label>
+      <label class="setting">Approval mode
+        <select id="set-approval"><option value="auto">auto — build first</option><option value="ask">ask — confirm first</option></select>
+      </label>
+      <p class="muted">The active model is set in the <b>⛁ Models</b> panel.</p>
     </aside>
     <div id="scrim" hidden></div>
 

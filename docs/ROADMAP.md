@@ -141,7 +141,11 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   Controller gained an `onRequest` hook; TUI records each request + `/history` + `/search <q>`; GUI
   records in `/api/express` + 🔍 History panel + `/api/history` & `/api/search?q=`. Smoke: search
   spans prompts + tools, TUI + GUI.
-- ⏭️ H5.8 settings/config UI
+- ✅ H5.8 settings/config UI — `@maker/store` `settings.ts` (getSettings/setSetting + defaults; keys
+  model/effort/theme/approvalMode; app-space). TUI `/settings` + `/set <key> <value>` (model syncs to
+  active model); GUI ⚙ Settings panel + REST (`/api/settings` GET/POST). Theme applied via
+  `data-theme` (dark/light CSS vars); approvalMode wired in the GUI (ask → confirm-before-build).
+  Smoke: store, TUI, GUI, theme. (TUI approval-confirm + effort→model params = follow-up.)
 - ⏭️ H5.9 local usage stats
 
 ## End-user readiness (G-series) — runnable GUI, TUI turnkey, model management

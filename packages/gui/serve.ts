@@ -19,7 +19,9 @@ import {
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
+  getSettings, setSetting,
 } from "../store/src/index.ts";
+import type { Settings } from "../store/src/index.ts";
 import type { HookEvent } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
@@ -314,6 +316,23 @@ async function handle(
     const removed = await removeHook(store, String(body["id"]));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ removed }));
+    return;
+  }
+
+  // --- settings (H5.8) ---
+  if (url === "/api/settings" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(await getSettings(store)));
+    return;
+  }
+  if (url === "/api/settings" && method === "POST") {
+    const body = await readJson(req);
+    const key = String(body["key"]) as keyof Settings;
+    const value = String(body["value"]);
+    const next = await setSetting(store, key, value);
+    if (key === "model" && value) await setActiveModel(value);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(next));
     return;
   }
 

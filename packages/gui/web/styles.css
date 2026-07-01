@@ -6,6 +6,13 @@
   --accent: #7aa2f7;
   --conv-fraction: 0.55; /* driven by the layout continuum (Talk/Split/Build) */
 }
+:root[data-theme="light"] {
+  --bg: #f6f6f8;
+  --panel: #ffffff;
+  --ink: #1a1a1f;
+  --muted: #6a6a72;
+  --accent: #3b6ef2;
+}
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -94,12 +101,14 @@ body {
   border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer;
 }
 #scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 5; }
-#models-panel, #macros-panel, #sched-panel, #hooks-panel, #search-panel {
+#models-panel, #macros-panel, #sched-panel, #hooks-panel, #search-panel, #settings-panel {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 92vw);
   background: var(--panel); border-left: 1px solid #2a2a31; z-index: 6;
   overflow: auto; padding: 16px; box-shadow: -12px 0 40px rgba(0,0,0,0.4);
 }
-#macros-btn, #sched-btn, #hooks-btn, #search-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+#macros-btn, #sched-btn, #hooks-btn, #search-btn, #settings-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #2a2a31; }
+.setting select { padding: 6px 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }
 #search-input { width: 100%; padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; margin-bottom: 12px; }
 #macro-add, #sched-add, #hook-add { display: flex; flex-direction: column; gap: 8px; }
 #macro-add input, #sched-add input, #hook-add input, #hook-add select { padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }

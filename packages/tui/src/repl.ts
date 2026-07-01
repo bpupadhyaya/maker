@@ -17,7 +17,9 @@ import {
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
+  getSettings, setSetting,
 } from "../../store/src/index.ts";
+import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
@@ -314,6 +316,29 @@ export async function main(): Promise<void> {
     }
   };
 
+  async function cmdSettings(): Promise<void> {
+    const s = await getSettings(store);
+    write("\nSettings:\n");
+    write(`  model         ${s.model || "(active model)"}\n`);
+    write(`  effort        ${s.effort}\n`);
+    write(`  theme         ${s.theme}\n`);
+    write(`  approvalMode  ${s.approvalMode}\n`);
+    write("\nChange with: /set <key> <value>  (keys: model effort theme approvalMode)\n");
+  }
+  async function cmdSet(arg: string): Promise<void> {
+    const [key, ...rest] = arg.split(/\s+/);
+    const value = rest.join(" ");
+    const valid = ["model", "effort", "theme", "approvalMode"];
+    if (!valid.includes(key ?? "") || !value) {
+      write(`usage: /set <${valid.join("|")}> <value>\n`);
+      return;
+    }
+    const next = await setSetting(store, key as keyof Settings, value);
+    if (key === "model") await setActiveModel(value);
+    write(`\n✓ ${key} = ${value}${key === "approvalMode" ? " (auto=build first · ask=confirm first)" : ""}\n`);
+    void next;
+  }
+
   async function cmdHistory(): Promise<void> {
     const { prompts, tools } = await historyOverview(store);
     write("\nRecent requests:\n");
@@ -399,6 +424,8 @@ export async function main(): Promise<void> {
       "/hook": cmdHook,
       "/history": cmdHistory,
       "/search": cmdSearch,
+      "/settings": cmdSettings,
+      "/set": cmdSet,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onRequest: (line) => void recordPrompt(store, line),

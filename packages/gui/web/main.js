@@ -163,8 +163,35 @@ $("#composer").addEventListener("submit", (e) => {
   const input = $("#input");
   const text = input.value.trim();
   input.value = "";
-  if (text) express(text).catch((err) => addTurn("error", String(err)));
+  if (!text) return;
+  // approvalMode: "ask" confirms before building (interrogate more).
+  if (settings.approvalMode === "ask" && !text.startsWith("/") && !confirm("Build: " + text + " ?")) return;
+  express(text).catch((err) => addTurn("error", String(err)));
 });
+
+// ---------- settings ----------
+let settings = { model: "", effort: "medium", theme: "dark", approvalMode: "auto" };
+const settingsPanel = $("#settings-panel");
+function applyTheme() { document.documentElement.setAttribute("data-theme", settings.theme); }
+async function loadSettings() {
+  settings = await (await fetch("/api/settings")).json();
+  applyTheme();
+  $("#set-effort").value = settings.effort;
+  $("#set-theme").value = settings.theme;
+  $("#set-approval").value = settings.approvalMode;
+}
+async function saveSetting(key, value) {
+  settings = await (await post("/api/settings", { key, value })).json();
+  applyTheme();
+}
+function openSettings() { settingsPanel.hidden = false; scrim.hidden = false; loadSettings(); }
+function closeSettings() { settingsPanel.hidden = true; scrim.hidden = true; }
+$("#settings-btn").addEventListener("click", openSettings);
+$("#settings-close").addEventListener("click", closeSettings);
+$("#set-effort").addEventListener("change", (e) => saveSetting("effort", e.target.value));
+$("#set-theme").addEventListener("change", (e) => saveSetting("theme", e.target.value));
+$("#set-approval").addEventListener("change", (e) => saveSetting("approvalMode", e.target.value));
+loadSettings();
 
 // ---------- onboarding (first run) ----------
 let profileRoles = [];
@@ -206,7 +233,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); });
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); closeSettings(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});
