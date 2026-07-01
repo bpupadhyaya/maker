@@ -121,7 +121,11 @@ Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
   default per tier**; `selectModel` now tier-based (prefers the tier's recommended); `modelsForTier`
   for a "choose another" list. Smoke: options present, selection tier-correct. (Exact GGUF
   filenames + sha256 pinned per release = `needs-user`.)
-- ⏭️ P5 backend/installer chooser (auto by platform + availability; sideload fallback) wired into `/setup`
+- ✅ P5 backend/installer chooser — `chooseInstaller` (default GGUF/llama.cpp = only-network;
+  Ollama if preferred; **sideload** a local `.gguf` = low-connectivity fallback) + `chooseBackendKind`
+  (MLX on Apple Silicon, else llama.cpp); `sideloadInstaller` copies a local file + checksum-verifies;
+  wired into TUI `/setup` (shows "via gguf, runtime mlx"). Smoke: selection by platform/preference +
+  sideload copy.
 - ⏭️ P6 README: install steps + model-configuration options
 
 ## H1 — v1 useful builder

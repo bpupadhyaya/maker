@@ -5,9 +5,10 @@ import { localWebRuntime } from "../../runtime/src/index.ts";
 import { fileMemoryStore, tasteMemory } from "../../store/src/index.ts";
 import {
   provisionModel,
-  ollamaInstaller,
   detectHardware,
   selectModel,
+  chooseInstaller,
+  chooseBackendKind,
 } from "../../provision/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
 
@@ -47,21 +48,32 @@ export async function main(): Promise<void> {
     `Maker — terminal (v1), backend=${backendName}. Describe a tool; /setup to install your model; /exit to quit.\n`,
   );
 
+  // Auto-choose how to fetch + run the model (default GGUF/llama.cpp = only-network;
+  // Ollama if MAKER_BACKEND=ollama; sideload a local .gguf via MAKER_SIDELOAD).
+  const hw = detectHardware();
+  const preferOllama = backendName === "ollama";
+  const sideloadPath = process.env["MAKER_SIDELOAD"];
+  const { installer, kind } = chooseInstaller({
+    ...(preferOllama ? { prefer: "ollama" as const } : {}),
+    ...(sideloadPath ? { sideloadPath } : {}),
+  });
+  const runtimeKind = chooseBackendKind(hw, preferOllama ? { prefer: "ollama" } : {});
+  const model = selectModel(hw);
+
   // First-run: if the model isn't set up yet, guide (don't demand shell commands).
-  const installer = ollamaInstaller();
-  const model = selectModel(detectHardware());
   if (!(await installer.isInstalled(model))) {
     write(
       `\nHeads up: your local model (${model.name}) isn't set up yet. ` +
-        `Type /setup and Maker will download it for you (one step, needs internet once).\n`,
+        `Type /setup and Maker will get it for you (via ${kind}, runtime ${runtimeKind}; one step, needs internet once).\n`,
     );
   }
 
   // /setup — app-driven provisioning. The user triggers it; the app does the rest.
   async function setup(): Promise<void> {
-    write("\nSetting up your model…\n");
+    write(`\nSetting up your model (via ${kind}, runtime ${runtimeKind})…\n`);
     const result = await provisionModel({
       installer,
+      hardware: hw,
       onProgress: (p) => {
         const pct = p.ratio !== undefined ? ` ${Math.round(p.ratio * 100)}%` : "";
         write(`  ${p.message}${pct}\n`);

@@ -21,3 +21,11 @@ export type {
 export { ollamaInstaller } from "./ollama-installer.ts";
 export { ggufInstaller } from "./gguf-installer.ts";
 export type { GgufOptions } from "./gguf-installer.ts";
+export { sideloadInstaller } from "./sideload-installer.ts";
+export { chooseInstaller, chooseBackendKind } from "./chooser.ts";
+export type {
+  InstallerKind,
+  BackendKind,
+  ChooseInstallerOptions,
+  ChooseBackendOptions,
+} from "./chooser.ts";
