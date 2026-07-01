@@ -3,7 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Maker's GUI: a Tauri shell + web UI, thin client over @maker/engine. Implemented in M0.8.",
+  "description": "Maker's GUI: a Tauri shell + web UI, thin client over @maker/engine. Pure core tested; live build needs the Rust/Tauri toolchain.",
   "license": "MIT",
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "dependencies": {
+    "@maker/engine": "*"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "tauri:dev": "echo \"needs-user: install Rust + Tauri CLI, then: cargo tauri dev\"",
+    "tauri:build": "echo \"needs-user: install Rust + Tauri CLI, then: cargo tauri build\""
+  }
 }

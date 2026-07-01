@@ -30,7 +30,9 @@ verified by fetching the served tool + confirming an iteration updates it, offli
 render as a panel in the REPL; 29 tests green offline) · ✅ M0.7 (persistence — `@maker/store`
 file-based `MemoryStore` under `~/.maker`; `createMaker` persists Brief + tool files each turn
 and `restore()` rebuilds+runs them; build→quit→restore verified by fetch; 32 tests green
-offline). Next: M0.8.
+offline) · 🟡 M0.8 (GUI — *partial*: the tested core is done — Talk/Split/Build layout continuum
++ view-model reducer, 37 tests green; web frontend (`web/`) + Tauri shell (`src-tauri/`)
+scaffolded. **Live Tauri build is `needs-user`.**). Next: M0.9.
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal
@@ -44,6 +46,9 @@ of Ink). Cross-package imports currently use relative paths (`../../engine/...`)
   this machine.
 - **M0.3 Ink polish** — the richer Ink terminal UI needs `npm install ink react` (network).
   Deferred; the readline REPL covers M0.3's acceptance today.
+- **M0.8 live GUI** — the tested core + web/Tauri scaffold are in; running the actual window
+  needs the Rust toolchain + Tauri CLI (`cargo tauri dev`) and the engine↔webview bridge (the
+  `express` Tauri command in `src-tauri/src/main.rs`). Not installable in this sandbox.
 
 **Engineering guardrails (all milestones):**
 - Engine is **headless + interface-first** — GUI/TUI/inference/runtime are thin clients/adapters.

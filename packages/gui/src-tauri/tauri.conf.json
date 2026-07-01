@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Maker",
+  "version": "0.0.0",
+  "identifier": "com.equalinformation.maker",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Maker",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 420
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Build tools by conversation — on-device, offline."
+  }
+}

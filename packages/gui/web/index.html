@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- The three exposed things: conversation | living tool, with the Brief as
+         a slim strip. One divider, three presets (Talk/Split/Build). See
+         DESIGN.md -> "User interface". -->
+    <header id="bar">
+      <span class="brand">Maker</span>
+      <div class="presets" role="group" aria-label="layout">
+        <button data-preset="talk">Talk</button>
+        <button data-preset="split" class="active">Split</button>
+        <button data-preset="build">Build</button>
+      </div>
+    </header>
+
+    <main id="workspace">
+      <section id="conversation" aria-label="conversation">
+        <div id="transcript"></div>
+        <form id="composer">
+          <input id="input" placeholder="Describe a tool… (🎤 / ✏️ later)" autocomplete="off" />
+        </form>
+      </section>
+
+      <div id="divider" role="separator" aria-orientation="vertical"></div>
+
+      <section id="tool" aria-label="living tool">
+        <iframe id="toolframe" title="living tool" sandbox="allow-scripts"></iframe>
+        <div id="tool-empty">Your tool will run here — poke it as it grows.</div>
+      </section>
+    </main>
+
+    <footer id="brief" aria-label="brief">
+      <span class="brief-goal">Goal: (not set yet)</span>
+      <span class="brief-open">0 open</span>
+    </footer>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

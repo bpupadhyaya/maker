@@ -1,0 +1,20 @@
+# Maker GUI shell (Tauri v2). Thin native wrapper; the brain is @maker/engine.
+# M0.8 scaffold — needs-user: `cargo`/Rust + the Tauri CLI to build/run.
+[package]
+name = "maker"
+version = "0.0.0"
+edition = "2021"
+description = "Maker — build tools by conversation, on-device and offline."
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "maker"
+path = "src/main.rs"
