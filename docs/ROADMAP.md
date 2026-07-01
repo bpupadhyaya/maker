@@ -113,7 +113,10 @@ everyone-audience (Personal/Money/Health/Learning/Work/Creative/Home/Other) → 
 onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a readline race
 (create the interface after async setup). Smoke: roles logic, profile roundtrip, GUI + TUI set).
 
-- ⏭️ H5.2 quick-start actions / templates (role-aware chips + TUI suggestions)
+- ✅ H5.2 quick-start templates — engine `starters.ts` (tracker/list/timer/calculator/dashboard/
+  form → label + prompt); GUI `/api/starters` (role-ordered) renders **empty-state chips** that
+  pre-fill the composer; TUI role-aware "Start with…" suggestion + `/starters` (list) + `/starter
+  <id>` (builds it). Smoke: role ordering, GUI chips, TUI express.
 - ⏭️ H5.3 projects / workspaces
 - ⏭️ H5.4 custom slash commands / macros
 - ⏭️ H5.5 local scheduling (offline routines)

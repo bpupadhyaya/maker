@@ -11,7 +11,8 @@ import {
 import type { InferenceBackend } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
 import { fileMemoryStore, tasteMemory, getRoles, setRoles } from "../../store/src/index.ts";
-import { ROLES, roleById } from "../../engine/src/index.ts";
+import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
+import { renderEvent } from "./render.ts";
 import {
   provisionModel,
   detectHardware,
@@ -204,6 +205,18 @@ export async function main(): Promise<void> {
     write(`\n✓ Roles set: ${ids.length ? ids.join(", ") : "(none)"} — starters will match.\n`);
   }
 
+  // Quick-start suggestions (H5.2), ordered by role.
+  const starterOrder = orderedStarters(startersForRoles(currentRoles));
+  write(
+    `\nStart with:  ${starterOrder.slice(0, 4).map((s) => s.label.toLowerCase()).join(" · ")}` +
+      `   (/starters for all, /starter <id> to build one)\n`,
+  );
+  async function cmdStarters(): Promise<void> {
+    write("\nStarters:\n");
+    for (const s of STARTERS) write(`  ${s.id} — ${s.label}: "${s.prompt}"\n`);
+    write("\nBuild one with: /starter <id>\n");
+  }
+
   // Auto-open the living tool in the browser when it (re)starts.
   let openedUrl = "";
   const onEvent = (ev: MakerEvent): void => {
@@ -212,6 +225,20 @@ export async function main(): Promise<void> {
       openBrowser(ev.url);
     }
   };
+
+  async function cmdStarter(arg: string): Promise<void> {
+    const s = starterById(arg.trim());
+    if (!s) {
+      write("usage: /starter <id>  (see /starters)\n");
+      return;
+    }
+    write(`\n» ${s.prompt}\n`);
+    for await (const ev of maker.express(s.prompt)) {
+      onEvent(ev);
+      write(renderEvent(ev));
+    }
+    write("\n");
+  }
 
   // Create the readline interface only now — after all async setup — so piped
   // input isn't emitted and lost before we start consuming it.
@@ -230,6 +257,8 @@ export async function main(): Promise<void> {
       "/remove-all": cmdRemoveAll,
       "/reset": cmdReset,
       "/role": cmdRole,
+      "/starters": cmdStarters,
+      "/starter": cmdStarter,
     },
     onEvent,
   });

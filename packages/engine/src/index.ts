@@ -30,6 +30,8 @@ export type { Maker, MakerDeps } from "./maker.ts";
 export { parseBriefBlock, mergeBrief, renderBrief } from "./brief-manager.ts";
 export { ROLES, roleById, startersForRoles, kindsForRoles } from "./roles.ts";
 export type { Role } from "./roles.ts";
+export { STARTERS, starterById, orderedStarters } from "./starters.ts";
+export type { Starter } from "./starters.ts";
 export { classifyKind, detectGaps } from "./gap-detection.ts";
 export type { ToolKind, Gap, Clarifier, GapResult, GapOptions } from "./gap-detection.ts";
 export {

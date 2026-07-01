@@ -28,6 +28,7 @@ applyResponsive();
 
 // ---------- rendering ----------
 function addTurn(role, text) {
+  if (role === "user") hideStarters();
   const el = document.createElement("div");
   el.className = "turn " + role;
   el.textContent = text;
@@ -35,6 +36,33 @@ function addTurn(role, text) {
   transcript.scrollTop = transcript.scrollHeight;
   return el;
 }
+
+// ---------- quick-start chips ----------
+function hideStarters() {
+  const s = document.getElementById("starters");
+  if (s) s.hidden = true;
+}
+async function loadStarters() {
+  const data = await (await fetch("/api/starters")).json();
+  const box = document.getElementById("starters");
+  box.innerHTML = '<div class="starters-title">Start with…</div>';
+  const row = document.createElement("div");
+  row.className = "starters-row";
+  for (const s of data.starters) {
+    const b = document.createElement("button");
+    b.className = "starter-chip";
+    b.textContent = s.label;
+    b.title = s.prompt;
+    b.addEventListener("click", () => {
+      const input = $("#input");
+      input.value = s.prompt;
+      input.focus();
+    });
+    row.appendChild(b);
+  }
+  box.appendChild(row);
+}
+loadStarters();
 function renderBrief(brief) {
   briefGoal.textContent = "Goal: " + (brief.goal || "(not set yet)");
   briefOpen.textContent = (brief.open?.length ?? 0) + " open";

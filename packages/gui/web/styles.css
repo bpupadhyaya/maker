@@ -45,6 +45,11 @@ body {
 
 #conversation { display: flex; flex-direction: column; min-height: 0; }
 #transcript { flex: 1; overflow: auto; padding: 12px; }
+.starters { padding: 16px 12px 0; }
+.starters-title { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.starters-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.starter-chip { background: var(--panel); color: var(--ink); border: 1px solid #2a2a31; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.starter-chip:hover { border-color: var(--accent); }
 #transcript .user { color: var(--ink); }
 #transcript .assistant { color: var(--muted); }
 #transcript .error { color: #f7768e; }

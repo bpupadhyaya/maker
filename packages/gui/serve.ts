@@ -13,7 +13,7 @@ import {
 import type { InferenceBackend, Maker } from "../engine/src/index.ts";
 import { localWebRuntime } from "../runtime/src/index.ts";
 import { fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded } from "../store/src/index.ts";
-import { ROLES } from "../engine/src/index.ts";
+import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
   detectHardware,
   selectModel,
@@ -205,6 +205,12 @@ async function handle(
     await setRoles(store, roles);
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ roles }));
+    return;
+  }
+  if (url === "/api/starters" && method === "GET") {
+    const roles = await getRoles(store);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ starters: orderedStarters(startersForRoles(roles)) }));
     return;
   }
 
