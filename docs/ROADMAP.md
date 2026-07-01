@@ -180,7 +180,16 @@ catalog entries versioned; `compareVersions` + `upgradeAvailable` offer a newer 
 the catalog advances, never forced; runtime smoke passes. Applying the download = `needs-user`) ·
 ✅ M3.4 (output targets — `emitTarget`: web (as-is) + pwa (manifest + service worker injected,
 installable) are offline-buildable; android/ios/desktop return a `needs-user` toolchain marker;
-runtime smoke: PWA served + manifest fetched, native targets flagged).
+runtime smoke: PWA served + manifest fetched, native targets flagged) · ✅ M3.5 (mobile
+thin-client pairing — `genPairingCode`/`createPairing`: desktop issues a code, phone submits it,
+a match yields a shared token; runtime smoke: wrong rejected, right pairs. Real transport (QR/LAN
++ device) = `needs-user`).
+
+### ✅ H3 COMPLETE — reach & richness.
+Multimodal input (voice/sketch pipeline), opt-in cloud (off by default), model auto-upgrade,
+web/PWA output + native-target markers, and desktop↔phone pairing — the seams for reaching more
+expression and form factors, with live hardware/network parts marked `needs-user`. Next: **H4
+(beyond software / robotics).**
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
@@ -188,7 +197,7 @@ runtime smoke: PWA served + manifest fetched, native targets flagged).
 | **M3.2** | Opt-in cloud connect | a CloudBackend (InferenceBackend), off by default, honest "reach out once" | ✅ done (smoke: refuses while off, streams when connected; real call = needs-user) | med |
 | **M3.3** | Model auto-upgrade | catalog versioning + an upgrade check that never breaks offline | ✅ done (smoke: upgrade offered only when newer; apply = needs-user) | low |
 | **M3.4** | Output targets | target abstraction (web/PWA now; mobile/desktop = needs-user toolchains) | ✅ done (smoke: PWA served + manifest; native flag needs-user) | med |
-| **M3.5** | Mobile thin-client pairing | pairing protocol scaffold (desktop workshop ↔ phone) | smoke: pairing handshake logic (real devices = needs-user) | high |
+| **M3.5** | Mobile thin-client pairing | pairing protocol scaffold (desktop workshop ↔ phone) | ✅ done (smoke: wrong rejected, right pairs + token; transport = needs-user) | high |
 
 ## H4
 

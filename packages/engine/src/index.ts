@@ -50,3 +50,5 @@ export { textInput, voiceInput, sketchInput } from "./input.ts";
 export type { InputModality, InputRequest, Transcriber, SketchDescriber } from "./input.ts";
 export { emitTarget } from "./target.ts";
 export type { BuildTarget, TargetResult, TargetMeta } from "./target.ts";
+export { genPairingCode, genToken, createPairing } from "./pairing.ts";
+export type { PairingSession, PairingResult } from "./pairing.ts";
