@@ -18,6 +18,7 @@ import {
   setMacro, removeMacro, listMacros, resolveMacro,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
+  recordPrompt, historyOverview, searchHistory,
 } from "../store/src/index.ts";
 import type { HookEvent } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
@@ -316,6 +317,19 @@ async function handle(
     return;
   }
 
+  // --- history + search (H5.7) ---
+  if (url === "/api/history" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(await historyOverview(store)));
+    return;
+  }
+  if (url === "/api/search" && method === "GET") {
+    const q = new URL(req.url ?? "/", "http://localhost").searchParams.get("q") ?? "";
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ hits: await searchHistory(store, q) }));
+    return;
+  }
+
   // --- conversation bridge (SSE) ---
   if (url === "/api/express" && method === "POST") {
     const body = await readJson(req);
@@ -325,6 +339,7 @@ async function handle(
       const macro = await resolveMacro(store, request.slice(1).split(/\s+/)[0] ?? "");
       if (macro !== undefined) request = macro;
     }
+    await recordPrompt(store, request);
     sse(res);
     try {
       for await (const ev of maker.express(request)) {

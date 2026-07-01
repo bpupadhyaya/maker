@@ -136,7 +136,11 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   the event stream) + `tool-built` (from `onToolBuilt`) in both front-ends; TUI `/hook add|list|
   remove`; GUI ⚡ panel + REST. Smoke: runHooks exec + tool-built on a real build. (`file-change` is
   a registered event type; auto-firing it needs a file watcher — small follow-up.)
-- ⏭️ H5.7 history + search
+- ✅ H5.7 history + search — `@maker/store` `history.ts` (recordPrompt/listPrompts capped at 300;
+  `historyOverview`; `searchHistory` over recorded session prompts AND tool-registry contracts).
+  Controller gained an `onRequest` hook; TUI records each request + `/history` + `/search <q>`; GUI
+  records in `/api/express` + 🔍 History panel + `/api/history` & `/api/search?q=`. Smoke: search
+  spans prompts + tools, TUI + GUI.
 - ⏭️ H5.8 settings/config UI
 - ⏭️ H5.9 local usage stats
 

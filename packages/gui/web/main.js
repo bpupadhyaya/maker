@@ -206,7 +206,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); });
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});
@@ -317,6 +317,39 @@ $("#hook-add").addEventListener("submit", async (e) => {
   await post("/api/hooks", { event, command });
   $("#hook-command").value = "";
   loadHooks();
+});
+
+// ---------- history & search panel ----------
+const searchPanel = $("#search-panel");
+function openSearch() { searchPanel.hidden = false; scrim.hidden = false; loadRecent(); $("#search-results").innerHTML = ""; }
+function closeSearch() { searchPanel.hidden = true; scrim.hidden = true; }
+$("#search-btn").addEventListener("click", openSearch);
+$("#search-close").addEventListener("click", closeSearch);
+async function loadRecent() {
+  const data = await (await fetch("/api/history")).json();
+  const box = $("#history-recent");
+  box.innerHTML = "";
+  const rows = [
+    ...data.prompts.slice(-8).reverse().map((p) => ({ kind: "prompt", text: p })),
+    ...data.tools.map((t) => ({ kind: "tool", text: `${t.name} — ${t.goal}` })),
+  ];
+  if (!rows.length) { box.innerHTML = '<p class="muted">Nothing yet.</p>'; return; }
+  for (const r of rows) box.appendChild(hitRow(r));
+}
+function hitRow(h) {
+  const row = document.createElement("div");
+  row.className = "model-row";
+  row.innerHTML = `<span class="m-name"><span class="muted">[${h.kind}]</span> ${h.text}</span>`;
+  return row;
+}
+$("#search-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("#search-input").value.trim();
+  const box = $("#search-results");
+  if (!q) { box.innerHTML = ""; return; }
+  const data = await (await fetch("/api/search?q=" + encodeURIComponent(q))).json();
+  box.innerHTML = data.hits.length ? "" : '<p class="muted">No matches.</p>';
+  for (const h of data.hits) box.appendChild(hitRow(h));
 });
 
 async function loadModels() {

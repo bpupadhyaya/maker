@@ -16,6 +16,7 @@ import {
   setMacro, removeMacro, listMacros, resolveMacro,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
+  recordPrompt, historyOverview, searchHistory,
 } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
@@ -313,6 +314,26 @@ export async function main(): Promise<void> {
     }
   };
 
+  async function cmdHistory(): Promise<void> {
+    const { prompts, tools } = await historyOverview(store);
+    write("\nRecent requests:\n");
+    for (const p of prompts.slice(-10).reverse()) write(`  · ${p}\n`);
+    if (!prompts.length) write("  (none yet)\n");
+    write("\nTools built:\n");
+    for (const t of tools) write(`  · ${t.name} — ${t.goal}\n`);
+    if (!tools.length) write("  (none yet)\n");
+    write("\n/search <query> to search across both.\n");
+  }
+  async function cmdSearch(arg: string): Promise<void> {
+    if (!arg.trim()) {
+      write("usage: /search <query>\n");
+      return;
+    }
+    const hits = await searchHistory(store, arg);
+    write(`\n${hits.length} result${hits.length === 1 ? "" : "s"} for "${arg}":\n`);
+    for (const h of hits) write(`  [${h.kind}] ${h.text}\n`);
+  }
+
   async function cmdHook(arg: string): Promise<void> {
     const parts = arg.split(/\s+/);
     const sub = parts[0];
@@ -376,8 +397,11 @@ export async function main(): Promise<void> {
       "/macro": cmdMacro,
       "/schedule": cmdSchedule,
       "/hook": cmdHook,
+      "/history": cmdHistory,
+      "/search": cmdSearch,
     },
     resolveMacro: (name) => resolveMacro(store, name),
+    onRequest: (line) => void recordPrompt(store, line),
     onEvent,
   });
   scheduleRunner.stop();

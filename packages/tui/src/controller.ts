@@ -23,6 +23,8 @@ export interface RunOptions {
   readonly onEvent?: (ev: MakerEvent) => void;
   /** Resolve a typed /name (not a built-in command) to a saved macro prompt. */
   readonly resolveMacro?: (name: string) => Promise<string | undefined>;
+  /** Called with each expressed line (after macro expansion) — e.g. to record history. */
+  readonly onRequest?: (line: string) => void;
 }
 
 /**
@@ -58,6 +60,7 @@ async function drive(
           toExpress = macro;
         }
       }
+      opts.onRequest?.(toExpress);
       for await (const ev of respond(toExpress)) {
         opts.onEvent?.(ev);
         io.write(renderEvent(ev));

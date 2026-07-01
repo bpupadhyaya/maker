@@ -22,6 +22,7 @@
       <button id="macros-btn" title="Macros">＠ Macros</button>
       <button id="sched-btn" title="Schedules">⏱ Schedules</button>
       <button id="hooks-btn" title="Hooks">⚡ Hooks</button>
+      <button id="search-btn" title="History &amp; search">🔍 History</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
@@ -149,6 +150,20 @@
         <input id="hook-command" placeholder="command (e.g. notify-send 'tool ready')" autocomplete="off" />
         <button type="submit">Add hook</button>
       </form>
+    </aside>
+
+    <!-- History & search -->
+    <aside id="search-panel" hidden aria-label="history and search">
+      <div class="panel-head">
+        <h2>History &amp; search</h2>
+        <button id="search-close">✕</button>
+      </div>
+      <form id="search-form">
+        <input id="search-input" placeholder="Search your requests and tools…" autocomplete="off" />
+      </form>
+      <div id="search-results" class="model-list"></div>
+      <h3>Recent</h3>
+      <div id="history-recent" class="model-list"></div>
     </aside>
     <div id="scrim" hidden></div>
 

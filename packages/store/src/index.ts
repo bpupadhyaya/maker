@@ -35,6 +35,8 @@ export {
 export type { Schedule } from "./schedules.ts";
 export { addHook, listHooks, removeHook, runHooks } from "./hooks.ts";
 export type { Hook, HookEvent } from "./hooks.ts";
+export { recordPrompt, listPrompts, historyOverview, searchHistory } from "./history.ts";
+export type { HistoryHit } from "./history.ts";
 export {
   registerTool,
   listTools,
