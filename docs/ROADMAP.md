@@ -199,9 +199,22 @@ expression and form factors, with live hardware/network parts marked `needs-user
 | **M3.4** | Output targets | target abstraction (web/PWA now; mobile/desktop = needs-user toolchains) | ✅ done (smoke: PWA served + manifest; native flag needs-user) | med |
 | **M3.5** | Mobile thin-client pairing | pairing protocol scaffold (desktop workshop ↔ phone) | ✅ done (smoke: wrong rejected, right pairs + token; transport = needs-user) | high |
 
-## H4
+## H4 — beyond software / robotics
 
-Milestone breakdown to be drafted when its horizon is next (scope lives in `DESIGN.md` →
-*Product scope*). H4 = beyond software / robotics.
+**Definition of done:** Maker builds across domains, not just software — a general on-device
+maker. Robotics is the first non-software domain; "tools that build tools" is realized; an
+optional commons lets tools/packs be shared. Physical execution (robots/ROS) is `needs-user`.
+
+**Progress:** ✅ M4.1 (domain abstraction — `Domain` registry (software + robotics),
+`classifyDomain`, `domainFor`; each domain names its artifact language + whether execution needs
+external hardware; runtime smoke: requests classified software vs robotics. Robot *execution* =
+`needs-user`).
+
+| # | Milestone | Goal | Acceptance gate | Risk |
+|---|---|---|---|---|
+| **M4.1** | Domain abstraction | a Domain seam (software + robotics) + classification | ✅ done (smoke: requests classified across domains) | med |
+| **M4.2** | Robotics emit + sim | emit a robot action plan; a local simulator "runs" it (real robot = needs-user) | smoke: plan emitted + simulated offline | high |
+| **M4.3** | Tools that build tools | Maker generates a capability pack from a spec + installs it | smoke: a pack authored by Maker installs + its template is usable | med |
+| **M4.4** | Optional commons | a shareable commons index (export/import a set of tools/packs) | smoke: commons bundle round-trips (hosting = needs-user) | med |
 
 [`DESIGN.md`]: ./DESIGN.md

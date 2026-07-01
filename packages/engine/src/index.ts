@@ -52,3 +52,11 @@ export { emitTarget } from "./target.ts";
 export type { BuildTarget, TargetResult, TargetMeta } from "./target.ts";
 export { genPairingCode, genToken, createPairing } from "./pairing.ts";
 export type { PairingSession, PairingResult } from "./pairing.ts";
+export {
+  SOFTWARE_DOMAIN,
+  ROBOTICS_DOMAIN,
+  DOMAINS,
+  domainFor,
+  classifyDomain,
+} from "./domain.ts";
+export type { Domain, DomainKind } from "./domain.ts";
