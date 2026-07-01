@@ -116,7 +116,11 @@ Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
   streams, plugs into a session, health-gated (running server = `needs-user`)
 - ✅ P3 MLX-on-Mac inference backend — `mlxInference` reuses the OpenAI-compatible adapter over a
   local `mlx_lm.server`, gated to Apple Silicon; smoke: streams on Apple Silicon, unavailable off it
-- ⏭️ P4 expand catalog: many OSS models + GGUF/Ollama/MLX options
+- ✅ P4 expanded catalog — **20 open-source models** across low/mid/high/workstation, each with
+  its **Ollama tag + GGUF/HF URL + MLX repo** (17 with MLX), licenses noted; a **recommended
+  default per tier**; `selectModel` now tier-based (prefers the tier's recommended); `modelsForTier`
+  for a "choose another" list. Smoke: options present, selection tier-correct. (Exact GGUF
+  filenames + sha256 pinned per release = `needs-user`.)
 - ⏭️ P5 backend/installer chooser (auto by platform + availability; sideload fallback) wired into `/setup`
 - ⏭️ P6 README: install steps + model-configuration options
 

@@ -4,7 +4,7 @@
 export type { Tier, Hardware } from "./hardware.ts";
 export { tierForMemGB, detectHardware } from "./hardware.ts";
 export type { ModelEntry } from "./catalog.ts";
-export { MODEL_CATALOG, selectModel } from "./catalog.ts";
+export { MODEL_CATALOG, selectModel, modelsForTier } from "./catalog.ts";
 export { sha256, verifyChecksum } from "./checksum.ts";
 export { compareVersions, upgradeAvailable } from "./versioning.ts";
 export type { InstalledModel } from "./versioning.ts";
