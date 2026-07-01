@@ -57,6 +57,16 @@
       <div id="installed-list" class="model-list"><p class="muted">none yet</p></div>
       <h3>Available</h3>
       <div id="available-list" class="model-list"></div>
+
+      <hr class="sep" />
+      <h3>Danger zone</h3>
+      <p class="muted">
+        <b>Remove all data (reset)</b> wipes every model, built tool, and memory
+        under <code>~/.maker</code> — a clean slate. The app stays installed. To
+        remove the app itself too, use the uninstaller (<code>scripts/uninstall.command</code>
+        on macOS, or the platform uninstaller).
+      </p>
+      <button id="reset-all" class="danger">Remove all data (reset)</button>
     </aside>
     <div id="scrim" hidden></div>
 

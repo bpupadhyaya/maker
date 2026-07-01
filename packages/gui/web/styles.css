@@ -115,3 +115,5 @@ body {
 .prog { width: 120px; height: 6px; background: #2a2a31; border-radius: 3px; overflow: hidden; }
 .prog-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
 code { background: #0e0e12; padding: 1px 5px; border-radius: 4px; }
+.sep { border: 0; border-top: 1px solid #2a2a31; margin: 16px 0; }
+#reset-all { background: #f7768e; color: #0e0e12; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }

@@ -24,6 +24,7 @@ import {
   setActiveModel,
   removeModel,
   removeAllModels,
+  resetMakerData,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -163,6 +164,18 @@ export async function main(): Promise<void> {
         : `\nRemoved ${removed} model${removed === 1 ? "" : "s"} — freed ${gb(freedBytes)}.\n`,
     );
   }
+  async function cmdReset(arg: string): Promise<void> {
+    if (arg !== "yes") {
+      write(
+        "\n⚠ This removes ALL data — every model, built tool, and memory (~/.maker).\n" +
+          "  To confirm, run:  /reset yes\n" +
+          "  (To remove the app itself too, use scripts/uninstall.sh or uninstall.command.)\n",
+      );
+      return;
+    }
+    const { freedBytes } = await resetMakerData();
+    write(`\n✓ Reset complete — freed ${gb(freedBytes)}. Fresh start; run /setup to add a model.\n`);
+  }
   async function cmdUse(arg: string): Promise<void> {
     if (!arg) return void write("usage: /use <model-id>\n");
     await setActiveModel(arg);
@@ -192,6 +205,7 @@ export async function main(): Promise<void> {
       "/use": cmdUse,
       "/remove": cmdRemove,
       "/remove-all": cmdRemoveAll,
+      "/reset": cmdReset,
     },
     onEvent,
   });

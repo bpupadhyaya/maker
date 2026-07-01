@@ -127,6 +127,12 @@ $("#remove-all").addEventListener("click", async () => {
   await post("/api/models/remove-all", {});
   loadModels();
 });
+$("#reset-all").addEventListener("click", async () => {
+  if (!confirm("Remove ALL data — every model, tool, and memory (~/.maker)? This cannot be undone.")) return;
+  const r = await (await post("/api/reset", {})).json();
+  addTurn("ok", "✓ Reset complete — freed " + fmtGB(r.freedBytes || 0) + ". Fresh start; run /setup to add a model.");
+  loadModels();
+});
 
 function fmtGB(bytes) { return (bytes / 1024 ** 3).toFixed(1) + " GB"; }
 

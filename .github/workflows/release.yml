@@ -40,5 +40,15 @@ jobs:
       #     tagName: ${{ github.ref_name }}
       #     releaseName: "Maker ${{ github.ref_name }}"
 
+      # needs-user: after the .dmg is built, drop the uninstaller next to the app
+      # so users see "Uninstall Maker" when they mount the disk image. (The app
+      # also bundles it at Contents/Resources/uninstall.command via tauri.conf.)
+      # - name: Add uninstaller to the .dmg (macOS)
+      #   if: runner.os == 'macOS'
+      #   run: |
+      #     # mount the built dmg read-write, copy scripts/uninstall.command in as
+      #     # "Uninstall Maker.command", then unmount + re-sign/notarize.
+      #     echo "post-process the dmg to include the uninstaller"
+
       - name: Packaging status
         run: echo "needs-user: Rust/Tauri toolchain + signing secrets to emit installers"

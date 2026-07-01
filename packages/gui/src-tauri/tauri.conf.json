@@ -16,6 +16,9 @@
     "active": true,
     "targets": "all",
     "category": "DeveloperTool",
-    "shortDescription": "Build tools by conversation — on-device, offline."
+    "shortDescription": "Build tools by conversation — on-device, offline.",
+    "resources": {
+      "../../../scripts/uninstall.command": "uninstall.command"
+    }
   }
 }

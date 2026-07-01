@@ -22,6 +22,7 @@ import {
   modelDiskUsage,
   removeModel,
   removeAllModels,
+  resetMakerData,
   getActiveModel,
   setActiveModel,
 } from "../provision/src/index.ts";
@@ -222,6 +223,12 @@ async function handle(
   }
   if (url === "/api/models/remove-all" && method === "POST") {
     const result = await removeAllModels();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(result));
+    return;
+  }
+  if (url === "/api/reset" && method === "POST") {
+    const result = await resetMakerData();
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(result));
     return;

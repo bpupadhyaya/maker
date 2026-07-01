@@ -88,6 +88,18 @@ export async function removeAllModels(): Promise<{
   return { removed: before.length, freedBytes };
 }
 
+/**
+ * Full reset — wipe ALL of Maker's app data (models, built tools, memory, active
+ * model) under MAKER_HOME. A clean slate; the app stays installed. Reports the
+ * freed model space (the meaningful part). To also remove the app itself, use
+ * the platform uninstaller.
+ */
+export async function resetMakerData(): Promise<{ freedBytes: number }> {
+  const freedBytes = await modelDiskUsage();
+  await fs.rm(makerHomeDir(), { recursive: true, force: true });
+  return { freedBytes };
+}
+
 function activeFile(): string {
   return path.join(makerHomeDir(), "active-model.json");
 }

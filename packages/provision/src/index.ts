@@ -26,6 +26,7 @@ export {
   modelDiskUsage,
   removeModel,
   removeAllModels,
+  resetMakerData,
   getActiveModel,
   setActiveModel,
 } from "./models-store.ts";

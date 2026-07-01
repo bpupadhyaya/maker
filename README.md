@@ -124,6 +124,10 @@ space.
 - **TUI:** `/models` (list installed + available), `/use <id>` (switch), `/remove <id>` (delete to
   free space).
 
+Want a clean slate without uninstalling the app? **Remove all data (reset)** — GUI: the **Danger
+zone** button in the Models panel; TUI: `/reset yes` — wipes every model, tool, and memory under
+`~/.maker`.
+
 ## Uninstall (complete cleanup)
 
 Whichever way you installed, cleanup removes **all of Maker's data** — every downloaded model,
@@ -134,6 +138,9 @@ or Ollama (you installed those). Because Maker keeps its data in one folder, cle
 
 Dragging the app to the Trash **leaves your models behind** — use the uninstaller for a complete
 cleanup (it removes the app + `~/.maker` + the small macOS per-app files):
+
+The macOS app **bundles this uninstaller** (at `Maker.app/Contents/Resources/uninstall.command`),
+so you can always find it. Run it:
 
 ```sh
 # macOS — double-click Uninstall Maker, or run:
