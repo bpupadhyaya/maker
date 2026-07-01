@@ -111,7 +111,9 @@ to `~/.maker/models` while hashing, checksum-verifies, behind the `ModelInstalle
 `provisionModel` uses it with no Ollama; catalog gained `ollama`/`gguf`/`mlx` per-model options.
 Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
 
-- ⏭️ P2 llama.cpp inference backend (local llama-server HTTP)
+- ✅ P2 llama.cpp inference backend — `llamaCppInference` hits a local `llama-server`
+  OpenAI-compatible `/v1/chat/completions` (streaming) + `/health`, loopback, no API key; smoke:
+  streams, plugs into a session, health-gated (running server = `needs-user`)
 - ⏭️ P3 MLX-on-Mac inference backend seam
 - ⏭️ P4 expand catalog: many OSS models + GGUF/Ollama/MLX options
 - ⏭️ P5 backend/installer chooser (auto by platform + availability; sideload fallback) wired into `/setup`

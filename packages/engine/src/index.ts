@@ -20,6 +20,8 @@ export { ollamaInference } from "./backends/ollama-inference.ts";
 export type { OllamaOptions, FetchLike } from "./backends/ollama-inference.ts";
 export { cloudInference, optInBackend } from "./backends/cloud-inference.ts";
 export type { CloudOptions, OptInController } from "./backends/cloud-inference.ts";
+export { llamaCppInference } from "./backends/llamacpp-inference.ts";
+export type { LlamaCppOptions } from "./backends/llamacpp-inference.ts";
 export { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
 export { createMaker } from "./maker.ts";
 export type { Maker, MakerDeps } from "./maker.ts";
