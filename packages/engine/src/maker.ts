@@ -20,6 +20,7 @@ import { slugName, renderReadme, buildManifest } from "./handoff.ts";
 import type { HandoffData } from "./handoff.ts";
 import { parseContractBlock, deriveContract } from "./contract.ts";
 import type { ToolContract, ToolRegistry } from "./contract.ts";
+import { matchTools } from "./composition.ts";
 
 export interface MakerDeps {
   readonly inference: InferenceBackend;
@@ -44,6 +45,10 @@ export interface Maker {
   handoffBundle(): HandoffData;
   /** The tool's contract (what it provides to other tools), once built. */
   readonly contract: ToolContract | undefined;
+  /** Accept a reuse offer — records the dependency for cross-tool verification. */
+  reuse(contract: ToolContract): void;
+  /** Ids of tools this one composes/depends on. */
+  readonly dependencies: readonly string[];
   restore(): Promise<boolean>;
   stop(): Promise<void>;
 }
@@ -66,6 +71,7 @@ export function createMaker(deps: MakerDeps): Maker {
   let lastFiles: Record<string, string> | undefined;
   let gapsChecked = false;
   let contract: ToolContract | undefined;
+  const dependencies: string[] = [];
   const checks: Check[] = [smokeCheck()]; // the accumulating regression net
 
   const briefKey = `${toolId}:brief`;
@@ -93,6 +99,13 @@ export function createMaker(deps: MakerDeps): Maker {
       }
       if (gaps.clarifiers.length > 0) {
         yield { type: "clarify", clarifiers: gaps.clarifiers };
+      }
+
+      // Proactively offer reuse of an existing tool that matches (never presumed).
+      if (deps.registry) {
+        const others = (await deps.registry.list()).filter((c) => c.id !== toolId);
+        const matches = matchTools(request, others);
+        if (matches.length > 0) yield { type: "reuse-offer", matches };
       }
     }
 
@@ -186,6 +199,15 @@ export function createMaker(deps: MakerDeps): Maker {
     handoffBundle,
     get contract() {
       return contract;
+    },
+    reuse(dep: ToolContract) {
+      if (!dependencies.includes(dep.id)) dependencies.push(dep.id);
+      brief = mergeBrief(brief, {
+        decided: [...brief.decided, `composes: ${dep.name}`],
+      });
+    },
+    get dependencies() {
+      return dependencies;
     },
     restore,
     async stop() {

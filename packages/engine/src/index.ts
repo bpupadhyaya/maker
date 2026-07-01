@@ -38,3 +38,5 @@ export type { HandoffManifest, HandoffData } from "./handoff.ts";
 export type { TasteMemory } from "./taste-memory.ts";
 export { parseContractBlock, deriveContract } from "./contract.ts";
 export type { ToolContract, Provision, ToolRegistry } from "./contract.ts";
+export { matchTools } from "./composition.ts";
+export type { ReuseMatch, MatchOptions } from "./composition.ts";

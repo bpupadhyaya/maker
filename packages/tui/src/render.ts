@@ -23,6 +23,12 @@ export function renderEvent(ev: MakerEvent): string {
         ev.clarifiers.map((c) => `  ? ${c.prompt}`).join("\n") +
         "\n"
       );
+    case "reuse-offer":
+      return (
+        "\n" +
+        ev.matches.map((m) => `  ↻ ${m.why} — build on it?`).join("\n") +
+        "\n"
+      );
     case "checks-run":
       return ev.violations.length === 0
         ? `\n✓  ${ev.results.length} checks passed`

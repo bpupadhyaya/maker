@@ -1,6 +1,7 @@
 import type { Brief } from "./interfaces/brief.ts";
 import type { Clarifier } from "./gap-detection.ts";
 import type { CheckResult } from "./verification.ts";
+import type { ReuseMatch } from "./composition.ts";
 
 /**
  * Events streamed from a Session/Maker as it processes one turn. Front-ends
@@ -11,6 +12,7 @@ export type MakerEvent =
   | { readonly type: "assistant-done"; readonly text: string }
   | { readonly type: "brief-updated"; readonly brief: Brief }
   | { readonly type: "clarify"; readonly clarifiers: readonly Clarifier[] }
+  | { readonly type: "reuse-offer"; readonly matches: readonly ReuseMatch[] }
   | { readonly type: "tool-running"; readonly url: string }
   | {
       readonly type: "checks-run";
