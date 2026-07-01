@@ -6,7 +6,9 @@ conversation that builds *tools* for you. Positioned as the **AI-age successor t
 
 **Read first:** [`README.md`](README.md) (overview) and [`docs/DESIGN.md`](docs/DESIGN.md)
 (full rationale, with explicit *decided* vs *open*). This file is quick orientation;
-`DESIGN.md` is the source of truth.
+`DESIGN.md` is the source of truth. Build plan (milestones, the *how/when*):
+[`docs/ROADMAP.md`](docs/ROADMAP.md) — start here to implement (H0 is broken into M0.0–M0.9,
+each with a verifiable acceptance gate).
 
 ## Status
 
