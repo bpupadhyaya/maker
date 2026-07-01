@@ -19,9 +19,11 @@ import {
   chooseBackendKind,
   MODEL_CATALOG,
   listInstalledModels,
+  modelDiskUsage,
   getActiveModel,
   setActiveModel,
   removeModel,
+  removeAllModels,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -144,11 +146,22 @@ export async function main(): Promise<void> {
       const mark = m.id === activeNow ? "*" : " ";
       write(`  ${mark} ${m.id} — ${m.name} (${gb(m.sizeBytes)})${m.id === activeNow ? " [active]" : ""}\n`);
     }
+    if (installed.length > 0) {
+      write(`  ── Total disk used: ${gb(await modelDiskUsage())}\n`);
+    }
     write("\nAvailable (download via /setup or the GUI Model panel):\n");
     for (const m of MODEL_CATALOG) {
       write(`    ${m.id} — ${m.name} (${m.tier}, ~${m.approxSizeGB}GB)${m.recommended ? " *" : ""}\n`);
     }
-    write("\n/use <id> to switch · /remove <id> to free space\n");
+    write("\n/use <id> to switch · /remove <id> to free space · /remove-all to clear everything\n");
+  }
+  async function cmdRemoveAll(): Promise<void> {
+    const { removed, freedBytes } = await removeAllModels();
+    write(
+      removed === 0
+        ? "\nNo models to remove.\n"
+        : `\nRemoved ${removed} model${removed === 1 ? "" : "s"} — freed ${gb(freedBytes)}.\n`,
+    );
   }
   async function cmdUse(arg: string): Promise<void> {
     if (!arg) return void write("usage: /use <model-id>\n");
@@ -178,6 +191,7 @@ export async function main(): Promise<void> {
       "/models": cmdModels,
       "/use": cmdUse,
       "/remove": cmdRemove,
+      "/remove-all": cmdRemoveAll,
     },
     onEvent,
   });

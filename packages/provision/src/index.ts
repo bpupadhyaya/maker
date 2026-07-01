@@ -25,6 +25,7 @@ export {
   listInstalledModels,
   modelDiskUsage,
   removeModel,
+  removeAllModels,
   getActiveModel,
   setActiveModel,
 } from "./models-store.ts";

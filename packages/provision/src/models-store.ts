@@ -77,6 +77,17 @@ export async function removeModel(id: string): Promise<boolean> {
   return existed;
 }
 
+/** Remove ALL installed models (frees all model disk); clears the active model. */
+export async function removeAllModels(): Promise<{
+  removed: number;
+  freedBytes: number;
+}> {
+  const before = await listInstalledModels();
+  const freedBytes = before.reduce((sum, m) => sum + m.sizeBytes, 0);
+  for (const m of before) await removeModel(m.id);
+  return { removed: before.length, freedBytes };
+}
+
 function activeFile(): string {
   return path.join(makerHomeDir(), "active-model.json");
 }

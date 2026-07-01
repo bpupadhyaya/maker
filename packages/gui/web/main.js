@@ -122,12 +122,20 @@ function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
 scrim.addEventListener("click", closePanel);
+$("#remove-all").addEventListener("click", async () => {
+  if (!confirm("Remove ALL downloaded models to free space?")) return;
+  await post("/api/models/remove-all", {});
+  loadModels();
+});
 
 function fmtGB(bytes) { return (bytes / 1024 ** 3).toFixed(1) + " GB"; }
 
 async function loadModels() {
   const data = await (await fetch("/api/models")).json();
   $("#disk-usage").textContent = "Disk used: " + fmtGB(data.diskUsageBytes || 0);
+
+  const removeAllBtn = $("#remove-all");
+  removeAllBtn.hidden = data.installed.length === 0;
 
   const installedIds = new Set(data.installed.map((m) => m.id));
   const inst = $("#installed-list");

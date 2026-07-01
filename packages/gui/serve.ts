@@ -21,6 +21,7 @@ import {
   listInstalledModels,
   modelDiskUsage,
   removeModel,
+  removeAllModels,
   getActiveModel,
   setActiveModel,
 } from "../provision/src/index.ts";
@@ -217,6 +218,12 @@ async function handle(
     const removed = await removeModel(String(body["id"]));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ removed }));
+    return;
+  }
+  if (url === "/api/models/remove-all" && method === "POST") {
+    const result = await removeAllModels();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(result));
     return;
   }
   if (url === "/api/models/download" && method === "POST") {
