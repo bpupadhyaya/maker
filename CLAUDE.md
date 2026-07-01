@@ -94,6 +94,29 @@ Early — **design phase, no code yet.** Name decided: **Maker**. Repo:
    breakage caught by verification; learned taste stays a labeled guess; Maker home (incl. memory)
    exportable. See `DESIGN.md` → *Composition & memory*.
 
+## Implementation stack (planned — revisable)
+
+First build-facing bet, targeting **macOS / Linux / Windows**. Chosen to fit the locked
+constraints (offline/local-first, small + low-end-friendly, GUI + TUI over one headless engine,
+tools built in TS/web):
+
+- **Engine:** TypeScript (Node/Bun) — *substrate unification* (same language as the tools it
+  builds; engine is I/O-bound so Rust's edge barely shows).
+- **GUI shell:** Tauri (Rust host + OS webview) — web/TS UI *and* small low-RAM native binary
+  (not Electron's bundled Chromium).
+- **GUI frontend:** Svelte/Solid (or React) — lighter webview; *contestable*.
+- **TUI:** Ink (TS) — same language as engine; Claude CLI *is* Ink = the "as fast as Claude CLI"
+  reference.
+- **Tool runtime:** Bun (Node fallback) — one binary = runtime+bundler+pkg-mgr, fewer offline
+  pieces.
+- **Inference:** pluggable — llama.cpp default, MLX on Mac, Ollama optional (per-device backends).
+
+**Non-negotiable:** keep the engine **headless with clean interfaces** — GUI/TUI/future-Rust-
+rewrite are all thin clients over it. The **engine language cascades** (TS → Ink+Bun; Rust →
+ratatui+sidecar). Alternative stack (Rust core + Tauri + ratatui) wins only if lean/low-end/
+robotics outweighs velocity + unification — not the v1 start. Detail: `DESIGN.md` →
+*Implementation stack*.
+
 ## Working style for this project
 
 Design-first, conversational, iterative. The user thinks in small incremental steps and

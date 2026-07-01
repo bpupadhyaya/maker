@@ -451,6 +451,101 @@ Non-negotiables so this doesn't betray the offline / non-developer / low-connect
 - The phone thin-client ↔ desktop-workshop pairing protocol.
 - Update/versioning of the local model and toolchains without breaking offline guarantees.
 
+## Product scope — end to end (the whole arc)
+
+The full product, not just v1. **North star:** the best *free, offline, on-device* maker — reached
+through conversation, building tools (and tools that build tools) with zero coding, for everyone,
+starting with software and ending as a general maker across domains including robotics. The scope
+grows along several axes at once; the horizons below sequence them.
+
+**Axes of the complete product**
+
+- **Interaction surface:** text → GUI + TUI → voice (🎤) → sketch (✏️) → (ambient/thought, far).
+- **What it builds (output domains):** local web/data/automation tools → full personal apps →
+  mobile apps → desktop apps → integrations/services → robotics/physical → other domains.
+- **Engine capabilities:** the five steps (Understand→Build→Iterate→Hand off→Evolve) · the Brief ·
+  gap-detection · verification · composition · memory — each deepening every horizon.
+- **Platforms Maker runs on:** desktop (macOS/Linux/Windows) → mobile thin client → embedded.
+- **Intelligence:** tiered local models → optional cloud connect → a steadily rising offline floor.
+- **Ecosystem:** install → per-tool artifacts → offline capability packs → tool sharing/composition
+  → a privacy-preserving commons.
+
+**Horizons** (each leaves a coherent, shippable whole; later horizons presuppose earlier ones)
+
+- **H0 — Foundation (engine skeleton).** Headless TS engine with clean interfaces; basic
+  conversation loop (Understand→Build→Iterate); one working pluggable inference backend; Brief v0
+  (goal/decided/guesses/open); always-runnable web/TS substrate + runtime + sandbox; minimal Tauri
+  GUI (conversation + living-tool webview + Brief strip) and minimal TUI; offline install +
+  provisioning + offline gate. *Exit:* converse → a running small web tool → iterate one ring → it
+  persists, fully offline.
+- **H1 — v1 "useful builder" (the shippable slice).** Solid spiral with commit-per-ring;
+  gap-detection v1 (ask-and-clarify, propose-a-default, archetype checklists); verification v1
+  (user-derived ratified checks each ring); memory v1 (you / your tools / taste-as-defaults);
+  hand-off (name, document, reusable); model catalog + fetch-not-bundle + sideload; both
+  front-ends polished with the Talk/Split/Build continuum. **Tool scope: local web/data/automation
+  & personal tools.** *Exit:* a non-developer builds a genuinely useful personal tool offline,
+  free, end to end.
+- **H2 — Composition & the tool ecosystem.** Tools building on tools (contracts + conversational
+  wiring + proactive-offer reuse); cross-tool verification & contradiction-catching; a local
+  library of tools + capability modules; downloadable offline capability packs (OSS libs,
+  templates, archetypes); tool export/sharing (code + Brief + checks travel together); the Evolve
+  step matured. *Exit:* tools compound — the Nth tool starts from everything already made.
+- **H3 — Reach & richness.** Multimodal input (local voice, sketch→tool); broader output (richer
+  apps, mobile — Android offline / iOS via Mac, desktop apps); mobile thin client paired to the
+  desktop workshop; the optional-connect ecosystem (cloud AI, knowledge sources, external
+  capabilities — all opt-in); local-model auto-upgrade without breaking the offline guarantee.
+  *Exit:* Maker builds across form factors and meets the user at more of their native expression.
+- **H4 — Beyond software (the platform vision).** A robotics backend (emit to ROS/Python/C++/
+  real-time; the workshop provisions a robotics runtime) and other domains (hardware, data
+  science, scientific/agentic tools); "tools that build tools" fully realized (Maker builds its
+  own extensions); optionally a shared, privacy-preserving commons. *Exit:* a general on-device
+  maker across domains — the AI-age `make` for anything buildable.
+
+**Cross-cutting, every horizon (never traded away):** offline-first after download · privacy
+(all-local) · MIT/open · the always-on behaviors (honesty, proactivity, restraint,
+always-runnable, memory) · ejectable ownership · accessibility (low-end hardware + low-connectivity
+sideload).
+
+**Non-goals / boundaries:** not a programming language (no human syntax) · not a cloud SaaS
+(local-first; cloud is opt-in only) · not a passive one-shot generator (it's a collaborator that
+remembers and re-architects) · not a frontier-model chase (goal is best *free+offline*, not
+beating cloud) · does not require an account, subscription, or connectivity to do its core job.
+
+**Honest dependencies & risks across the arc:** local-model quality (rising, but the hard 20%
+leans on optional-connect) · the unglamorous cross-platform packaging/provisioning grind ·
+gap-detection quality on small models · iOS's Mac+Xcode wall · over-scope (breadth, not the core
+idea, is the main failure mode) — so each horizon must ship a coherent whole before the next.
+
+## Implementation stack (planned — revisable)
+
+The first build-facing choice. Marked *planned*, not decided: these are the strongest current
+bets, chosen to satisfy the constraints already locked (offline/local-first, small + low-end-
+hardware-friendly, GUI + Terminal over one headless engine, tools built in TS/web). Cross-
+platform target: **macOS, Linux/Unix, Windows.**
+
+| Layer | Planned choice | Beat | Decisive reason |
+|---|---|---|---|
+| **Headless engine** | **TypeScript** (Node or Bun) | Rust, Go, Python | **Substrate unification** — same language/types as the TS/web tools it builds, so verifier/composition/runtime have no FFI boundary with the artifact. Engine is I/O-bound (heavy compute is in the model subprocess), so Rust's perf edge barely shows |
+| **GUI shell** | **Tauri** (Rust host + OS webview) | Electron, Flutter, Qt/native, PWA | Only option that keeps a **web/TS UI** *and* a **small low-RAM native binary** (OS webview, no bundled Chromium). The living-tool pane is naturally a webview |
+| **GUI frontend** | **Svelte/Solid** (or React) | React/Vue/vanilla | Compile-away frameworks = lighter webview for weak hardware. *Contestable* — React if velocity > leanness. Least load-bearing pick |
+| **Terminal (TUI)** | **Ink** (TypeScript) | ratatui, Bubbletea, Textual | Same language as engine (thin client, no FFI) + Claude CLI *is* Ink → literal reference for the "as fast as Claude CLI" bar |
+| **Generated-tool runtime** | **Bun** (Node fallback) | Node, Deno | One fast binary = runtime + bundler + pkg-mgr → fewer offline-provisioned pieces, faster cold builds for the spiral loop. Trade: Bun maturity vs Node |
+| **Local inference** | **Pluggable** — llama.cpp default · **MLX on Mac** · Ollama optional | own engine, single backend, Python vLLM | Hardware heterogeneity is the game — fastest engine differs per platform (MLX fastest on Apple Silicon). Pluggable = the design's "per-device backends" |
+
+**The cascade.** These aren't independent: the **engine language choice cascades** (TS engine →
+Ink TUI + Bun/Node runtime; a Rust engine → ratatui TUI + a sidecar runtime, losing substrate
+unification). Everything else is deliberately **swappable behind the headless engine** — which is
+exactly why React-vs-Svelte and Bun-vs-Node can stay open without risk.
+
+**The one non-negotiable:** keep the **engine headless with clean interfaces** from day one, so
+the GUI, the TUI, and any future Rust rewrite of the hot paths are all thin clients over it.
+
+**The alternative stack (if the lean/low-end/robotics axis dominates):** Rust core + Tauri +
+ratatui TUI + a Node/Bun sidecar only to run generated tools. Smallest/fastest single-binary
+engine and a natural path to systems/robotics backends — but much slower to build, smaller talent
+pool, and it *loses substrate unification*. Not recommended as the v1 starting point; reachable
+later via Maker's own "fearless rebuild" ethos, migrating hot paths behind the same interfaces.
+
 ## Open questions
 
 These are named but not yet designed — the load-bearing ones:
