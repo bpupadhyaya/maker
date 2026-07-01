@@ -91,10 +91,28 @@ mechanical.
 
 ---
 
-## H1–H4
+## H1 — v1 useful builder
+
+**Definition of done:** a non-developer builds a genuinely useful personal tool offline, free,
+end to end — with Maker asking the *right* few questions, verifying what it built, remembering
+taste, and handing off a named/documented tool.
+
+**Progress:** ✅ M1.1 (gap-detection v1 — `classifyKind` + archetype checklists + `detectGaps`:
+invisible/expensive gaps → propose-a-default clarifiers, bounded; visible/cheap → labeled
+guesses; memory-skippable; 51 tests green offline).
+
+| # | Milestone | Goal | Acceptance gate | Risk |
+|---|---|---|---|---|
+| **M1.1** | Gap-detection v1 | ask-and-clarify: classify kind → archetype gaps → clarifiers + guesses | ✅ done (51 tests) | med |
+| **M1.2** | Verification v1 | derive checks from the Brief's `decided`; run them each ring against the running tool; report violations | checks run offline; a violation is caught + reported as a concrete repro | high |
+| **M1.3** | Taste-memory | record ratified decisions/taste in the store; apply as defaults → shrink gap-detection's questions over time | a decision made once isn't asked again (feeds `detectGaps` `known`) | med |
+| **M1.4** | Hand-off | name the tool + generate a README; make it ejectable | build → hand-off produces a named dir with code + README + Brief | low |
+| **M1.5** | Integrate + polish | wire gap-detection/verification/taste into `createMaker`; the TUI REPL builds real tools; front-ends render clarifiers | end-to-end: express → clarify → build → verify → persist, in the REPL | high |
+
+## H2–H4
 
 Milestone breakdowns to be drafted when their horizon is next (scope lives in `DESIGN.md` →
-*Product scope*). H1 = v1 useful builder; H2 = composition & ecosystem; H3 = reach/multimodal/
-mobile; H4 = beyond software / robotics.
+*Product scope*). H2 = composition & ecosystem; H3 = reach/multimodal/mobile; H4 = beyond
+software / robotics.
 
 [`DESIGN.md`]: ./DESIGN.md

@@ -22,3 +22,5 @@ export { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
 export { createMaker } from "./maker.ts";
 export type { Maker, MakerDeps } from "./maker.ts";
 export { parseBriefBlock, mergeBrief, renderBrief } from "./brief-manager.ts";
+export { classifyKind, detectGaps } from "./gap-detection.ts";
+export type { ToolKind, Gap, Clarifier, GapResult, GapOptions } from "./gap-detection.ts";
