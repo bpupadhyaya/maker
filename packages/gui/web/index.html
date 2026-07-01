@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- The three exposed things: conversation | living tool, with the Brief as
-         a slim strip. One divider, three presets (Talk/Split/Build). See
-         DESIGN.md -> "User interface". -->
+    <!-- The three exposed things: conversation | living tool, with the Brief as a
+         slim strip. One divider, three presets (Talk/Split/Build). Plus a Model
+         panel for download/remove/switch. See DESIGN.md -> "User interface". -->
     <header id="bar">
       <span class="brand">Maker</span>
       <div class="presets" role="group" aria-label="layout">
@@ -17,20 +17,21 @@
         <button data-preset="split" class="active">Split</button>
         <button data-preset="build">Build</button>
       </div>
+      <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
     <main id="workspace">
       <section id="conversation" aria-label="conversation">
         <div id="transcript"></div>
         <form id="composer">
-          <input id="input" placeholder="Describe a tool… (🎤 / ✏️ later)" autocomplete="off" />
+          <input id="input" placeholder="Describe a tool… (or /setup)" autocomplete="off" />
         </form>
       </section>
 
       <div id="divider" role="separator" aria-orientation="vertical"></div>
 
       <section id="tool" aria-label="living tool">
-        <iframe id="toolframe" title="living tool" sandbox="allow-scripts"></iframe>
+        <iframe id="toolframe" title="living tool" sandbox="allow-scripts allow-forms"></iframe>
         <div id="tool-empty">Your tool will run here — poke it as it grows.</div>
       </section>
     </main>
@@ -39,6 +40,24 @@
       <span class="brief-goal">Goal: (not set yet)</span>
       <span class="brief-open">0 open</span>
     </footer>
+
+    <!-- Model panel -->
+    <aside id="models-panel" hidden aria-label="models">
+      <div class="panel-head">
+        <h2>Models</h2>
+        <span id="disk-usage" class="muted"></span>
+        <button id="models-close">✕</button>
+      </div>
+      <p class="muted">
+        Models are stored in Maker's own space (<code>~/.maker/models</code>), not
+        system-wide. Download the one you want; remove any to free space.
+      </p>
+      <h3>Installed</h3>
+      <div id="installed-list" class="model-list"><p class="muted">none yet</p></div>
+      <h3>Available</h3>
+      <div id="available-list" class="model-list"></div>
+    </aside>
+    <div id="scrim" hidden></div>
 
     <script type="module" src="main.js"></script>
   </body>

@@ -115,7 +115,11 @@ list/disk/switch/remove clean; removing the active model clears it).
   conversation to `createMaker` over **SSE** (`POST /api/express`), model-management REST
   (`GET /api/models`, `POST /api/models/{download,remove,use}`), opens the browser; `npm start`.
   Smoke: web served, 20 models listed, active switched, conversation streamed — all without Tauri.
-- ⏭️ G3 GUI web UI fully wired — conversation, living-tool iframe, Brief strip, model panel
+- ✅ G3 GUI web UI fully wired — `web/index.html`+`main.js`+`styles.css`: conversation sends and
+  renders SSE events into the transcript, the living-tool `<iframe>` loads the running tool URL,
+  the Brief strip updates, and a **Model panel** lists installed + available models with
+  download-with-progress, remove-to-free-space, switch-active, and disk usage. Smoke: panel markup +
+  endpoint wiring + live use/remove + conversation SSE. **The GUI is usable end to end in a browser.**
 - ⏭️ G4 TUI turnkey — /models, /use, /remove, auto-open tool in browser, active-model wired
 - ⏭️ G5 Tauri native shell wired (compile/sign = needs-user)
 - ⏭️ G6 README — honest install (clone repo + run), model management, env vars
