@@ -19,6 +19,7 @@
         <button data-preset="split" class="active">Split</button>
         <button data-preset="build">Build</button>
       </div>
+      <button id="macros-btn" title="Macros">＠ Macros</button>
       <button id="models-btn" title="Models">⛁ Models</button>
     </header>
 
@@ -83,6 +84,25 @@
         on macOS, or the platform uninstaller).
       </p>
       <button id="reset-all" class="danger">Remove all data (reset)</button>
+    </aside>
+
+    <!-- Macros manager -->
+    <aside id="macros-panel" hidden aria-label="macros">
+      <div class="panel-head">
+        <h2>Macros</h2>
+        <button id="macros-close">✕</button>
+      </div>
+      <p class="muted">
+        Custom shortcuts: type <code>/name</code> in the composer to run a saved
+        prompt. Fully local.
+      </p>
+      <div id="macros-list" class="model-list"></div>
+      <h3>Add</h3>
+      <form id="macro-add">
+        <input id="macro-name" placeholder="name (e.g. tip)" autocomplete="off" />
+        <input id="macro-prompt" placeholder="prompt (e.g. build me a tip calculator)" autocomplete="off" />
+        <button type="submit">Save</button>
+      </form>
     </aside>
     <div id="scrim" hidden></div>
 

@@ -21,6 +21,8 @@ export interface RunOptions {
   readonly commands?: Readonly<Record<string, (arg: string) => Promise<void> | void>>;
   /** Observe each streamed event (e.g. to open the living tool in a browser). */
   readonly onEvent?: (ev: MakerEvent) => void;
+  /** Resolve a typed /name (not a built-in command) to a saved macro prompt. */
+  readonly resolveMacro?: (name: string) => Promise<string | undefined>;
 }
 
 /**
@@ -42,11 +44,21 @@ async function drive(
     if (trimmed === "/exit" || trimmed === "/quit") break;
 
     const parts = trimmed.split(/\s+/);
-    const command = commands[parts[0] ?? ""];
+    const head = parts[0] ?? "";
+    const command = commands[head];
     if (command) {
       await command(parts.slice(1).join(" "));
     } else if (trimmed !== "") {
-      for await (const ev of respond(trimmed)) {
+      // A typed /name that isn't a built-in may be a custom macro → expand it.
+      let toExpress = trimmed;
+      if (head.startsWith("/") && opts.resolveMacro) {
+        const macro = await opts.resolveMacro(head.slice(1));
+        if (macro !== undefined) {
+          io.write(`(macro ${head} → ${macro})\n`);
+          toExpress = macro;
+        }
+      }
+      for await (const ev of respond(toExpress)) {
         opts.onEvent?.(ev);
         io.write(renderEvent(ev));
       }

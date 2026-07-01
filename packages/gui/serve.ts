@@ -15,6 +15,7 @@ import { localWebRuntime } from "../runtime/src/index.ts";
 import {
   fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
+  setMacro, removeMacro, listMacros, resolveMacro,
 } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
 import {
@@ -242,12 +243,39 @@ async function handle(
     return;
   }
 
+  // --- macros (H5.4) ---
+  if (url === "/api/macros" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ macros: await listMacros(store) }));
+    return;
+  }
+  if (url === "/api/macros" && method === "POST") {
+    const body = await readJson(req);
+    await setMacro(store, String(body["name"]), String(body["prompt"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url === "/api/macros/remove" && method === "POST") {
+    const body = await readJson(req);
+    const removed = await removeMacro(store, String(body["name"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ removed }));
+    return;
+  }
+
   // --- conversation bridge (SSE) ---
   if (url === "/api/express" && method === "POST") {
     const body = await readJson(req);
+    let request = String(body["request"] ?? "");
+    // Macro expansion: a typed /name maps to a saved prompt.
+    if (request.startsWith("/")) {
+      const macro = await resolveMacro(store, request.slice(1).split(/\s+/)[0] ?? "");
+      if (macro !== undefined) request = macro;
+    }
     sse(res);
     try {
-      for await (const ev of maker.express(String(body["request"] ?? ""))) {
+      for await (const ev of maker.express(request)) {
         res.write(`data: ${JSON.stringify(ev)}\n\n`);
       }
     } catch (e) {

@@ -21,6 +21,8 @@ export {
   addToolToProject,
 } from "./projects.ts";
 export type { Project } from "./projects.ts";
+export { setMacro, removeMacro, listMacros, resolveMacro } from "./macros.ts";
+export type { Macro } from "./macros.ts";
 export {
   registerTool,
   listTools,

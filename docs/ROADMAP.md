@@ -117,8 +117,15 @@ onboarding overlay + `/api/profile`; TUI first-run hint + `/role`. Also fixed a 
   form → label + prompt); GUI `/api/starters` (role-ordered) renders **empty-state chips** that
   pre-fill the composer; TUI role-aware "Start with…" suggestion + `/starters` (list) + `/starter
   <id>` (builds it). Smoke: role ordering, GUI chips, TUI express.
-- ⏭️ H5.3 projects / workspaces
-- ⏭️ H5.4 custom slash commands / macros
+- ✅ H5.3 projects / workspaces — `@maker/store` `projects.ts` (Project = id/name/toolIds;
+  create/list/active/default 'My Tools'/addTool); `createMaker` `onToolBuilt` hook files each built
+  tool into the active project; GUI header switcher + REST; TUI `/project list|new|use`. Smoke:
+  auto-filing + switch.
+- ✅ H5.4 custom slash commands / macros — `@maker/store` `macros.ts` (set/remove/list/resolve,
+  app-space); controller gained a `resolveMacro` hook so a typed `/name` that isn't built-in expands
+  to a saved prompt and builds; TUI `/macro add|list|remove` + expansion; GUI Macros panel (＠) +
+  REST (`/api/macros` GET/POST, `/api/macros/remove`) and expansion in `/api/express`. Smoke: TUI +
+  GUI expansion build.
 - ⏭️ H5.5 local scheduling (offline routines)
 - ⏭️ H5.6 hooks / automation
 - ⏭️ H5.7 history + search

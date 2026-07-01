@@ -206,7 +206,7 @@ function openPanel() { panel.hidden = false; scrim.hidden = false; loadModels();
 function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
-scrim.addEventListener("click", closePanel);
+scrim.addEventListener("click", () => { closePanel(); closeMacros(); });
 $("#remove-all").addEventListener("click", async () => {
   if (!confirm("Remove ALL downloaded models to free space?")) return;
   await post("/api/models/remove-all", {});
@@ -220,6 +220,39 @@ $("#reset-all").addEventListener("click", async () => {
 });
 
 function fmtGB(bytes) { return (bytes / 1024 ** 3).toFixed(1) + " GB"; }
+
+// ---------- macros panel ----------
+const macrosPanel = $("#macros-panel");
+function openMacros() { macrosPanel.hidden = false; scrim.hidden = false; loadMacros(); }
+function closeMacros() { macrosPanel.hidden = true; scrim.hidden = true; }
+$("#macros-btn").addEventListener("click", openMacros);
+$("#macros-close").addEventListener("click", closeMacros);
+async function loadMacros() {
+  const data = await (await fetch("/api/macros")).json();
+  const list = $("#macros-list");
+  list.innerHTML = data.macros.length ? "" : '<p class="muted">No macros yet.</p>';
+  for (const m of data.macros) {
+    const row = document.createElement("div");
+    row.className = "model-row";
+    const name = document.createElement("span");
+    name.className = "m-name";
+    name.innerHTML = `<b>/${m.name}</b> → ${m.prompt}`;
+    const rm = button("Remove", async () => { await post("/api/macros/remove", { name: m.name }); loadMacros(); });
+    rm.className = "danger";
+    row.append(name, rm);
+    list.appendChild(row);
+  }
+}
+$("#macro-add").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("#macro-name").value.trim().replace(/^\//, "");
+  const prompt = $("#macro-prompt").value.trim();
+  if (!name || !prompt) return;
+  await post("/api/macros", { name, prompt });
+  $("#macro-name").value = "";
+  $("#macro-prompt").value = "";
+  loadMacros();
+});
 
 async function loadModels() {
   const data = await (await fetch("/api/models")).json();

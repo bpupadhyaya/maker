@@ -13,6 +13,7 @@ import { localWebRuntime } from "../../runtime/src/index.ts";
 import {
   fileMemoryStore, tasteMemory, getRoles, setRoles,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
+  setMacro, removeMacro, listMacros, resolveMacro,
 } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
@@ -241,6 +242,26 @@ export async function main(): Promise<void> {
     write("\n/project new <name> · /project use <id>\n");
   }
 
+  async function cmdMacro(arg: string): Promise<void> {
+    const [sub, name, ...rest] = arg.split(/\s+/);
+    const prompt = rest.join(" ");
+    if (sub === "add" && name && prompt) {
+      await setMacro(store, name, prompt);
+      write(`\n✓ Saved macro /${name} → "${prompt}"  (type /${name} to run it)\n`);
+      return;
+    }
+    if (sub === "remove" && name) {
+      const ok = await removeMacro(store, name);
+      write(ok ? `\n✓ Removed /${name}.\n` : `\n/${name} not found.\n`);
+      return;
+    }
+    const macros = await listMacros(store);
+    write("\nMacros:\n");
+    if (!macros.length) write("  (none — /macro add <name> <prompt…>)\n");
+    for (const m of macros) write(`  /${m.name} → "${m.prompt}"\n`);
+    write("\n/macro add <name> <prompt…> · /macro remove <name>\n");
+  }
+
   async function cmdStarters(): Promise<void> {
     write("\nStarters:\n");
     for (const s of STARTERS) write(`  ${s.id} — ${s.label}: "${s.prompt}"\n`);
@@ -290,7 +311,9 @@ export async function main(): Promise<void> {
       "/starters": cmdStarters,
       "/starter": cmdStarter,
       "/project": cmdProject,
+      "/macro": cmdMacro,
     },
+    resolveMacro: (name) => resolveMacro(store, name),
     onEvent,
   });
   await maker.stop();
