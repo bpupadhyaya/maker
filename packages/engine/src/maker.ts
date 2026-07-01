@@ -18,6 +18,8 @@ import {
 import type { Check } from "./verification.ts";
 import { slugName, renderReadme, buildManifest } from "./handoff.ts";
 import type { HandoffData } from "./handoff.ts";
+import { parseContractBlock, deriveContract } from "./contract.ts";
+import type { ToolContract, ToolRegistry } from "./contract.ts";
 
 export interface MakerDeps {
   readonly inference: InferenceBackend;
@@ -27,6 +29,8 @@ export interface MakerDeps {
   readonly store?: MemoryStore;
   /** Optional taste-memory; when present, decisions shrink gap-detection. */
   readonly taste?: TasteMemory;
+  /** Optional tool registry; when present, each built tool registers its contract. */
+  readonly registry?: ToolRegistry;
 }
 
 export interface Maker {
@@ -38,6 +42,8 @@ export interface Maker {
   decide(gapId: string, value: string): Promise<void>;
   /** A ready-to-write ejectable bundle (name + files + README + manifest). */
   handoffBundle(): HandoffData;
+  /** The tool's contract (what it provides to other tools), once built. */
+  readonly contract: ToolContract | undefined;
   restore(): Promise<boolean>;
   stop(): Promise<void>;
 }
@@ -59,6 +65,7 @@ export function createMaker(deps: MakerDeps): Maker {
   let brief: Brief = emptyBrief();
   let lastFiles: Record<string, string> | undefined;
   let gapsChecked = false;
+  let contract: ToolContract | undefined;
   const checks: Check[] = [smokeCheck()]; // the accumulating regression net
 
   const briefKey = `${toolId}:brief`;
@@ -127,6 +134,15 @@ export function createMaker(deps: MakerDeps): Maker {
     const violations = reportViolations(results);
     yield { type: "checks-run", results, violations };
 
+    // Contract: derive + register what this tool provides to other tools.
+    contract = deriveContract(
+      toolId,
+      brief,
+      slugName(brief.goal),
+      parseContractBlock(assembled),
+    );
+    if (deps.registry) await deps.registry.register(contract);
+
     await persist();
   }
 
@@ -168,6 +184,9 @@ export function createMaker(deps: MakerDeps): Maker {
     },
     decide,
     handoffBundle,
+    get contract() {
+      return contract;
+    },
     restore,
     async stop() {
       if (current) {

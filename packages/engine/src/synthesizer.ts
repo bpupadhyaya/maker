@@ -35,8 +35,8 @@ export function synthesizeFiles(modelText: string): Record<string, string> {
   for (let m = fence.exec(modelText); m !== null; m = fence.exec(modelText)) {
     const info = (m[1] ?? "").trim();
     const lang = info.split(/\s+/)[0]?.toLowerCase() ?? "";
-    // Reserved blocks (Brief, checks) are not tool files.
-    if (lang === "brief" || lang === "checks") continue;
+    // Reserved blocks (Brief, checks, contract) are not tool files.
+    if (lang === "brief" || lang === "checks" || lang === "contract") continue;
 
     let body = m[2] ?? "";
     if (body.endsWith("\n")) body = body.slice(0, -1);

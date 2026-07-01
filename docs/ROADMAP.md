@@ -127,10 +127,27 @@ All offline. Next: **H2 (composition & the tool ecosystem).**
 | **M1.4** | Hand-off | name the tool + generate a README; make it ejectable | ✅ done (smoke: named ejectable bundle — code + README + maker.json) | low |
 | **M1.5** | Integrate + polish | wire gap-detection/verification/taste into `createMaker`; the TUI REPL builds real tools; front-ends render clarifiers | ✅ done (smoke: clarify→build→verify→taste-shrinks→handoff; live REPL) | high |
 
-## H2–H4
+## H2 — composition & the tool ecosystem
+
+**Definition of done:** tools compound — a new tool can build on ones already made; Maker
+proactively offers reuse; cross-tool breakage is caught; tools export/share.
+
+**Progress:** ✅ M2.1 (tool contracts + registry — `contract.ts`: `ToolContract`/`Provision`
+derived from the Brief (+ a reserved ```contract``` block); `@maker/store` registry
+(`registerTool`/`listTools`/`toolRegistry`); `createMaker` registers each built tool's contract
++ exposes `maker.contract`; runtime smoke: 2 tools registered + discoverable).
+
+| # | Milestone | Goal | Acceptance gate | Risk |
+|---|---|---|---|---|
+| **M2.1** | Tool contracts + registry | tools expose a contract; a local registry lists them | ✅ done (smoke: 2 contracts registered + discoverable) | med |
+| **M2.2** | Composition (proactive-offer) | when a new request matches an existing tool, Maker offers to build on it; wires the contract in | smoke: request matching a registered tool → a reuse offer event | high |
+| **M2.3** | Cross-tool verification | a composed tool's checks flag when its dependency changes | smoke: change dep → dependent's check reports the break | high |
+| **M2.4** | Capability packs | offline packs (templates/archetypes) with a format + apply | smoke: apply a local pack → its templates available (download = needs-user) | med |
+| **M2.5** | Tool export/import | export a tool (code + Brief + checks + contract) and import it back | smoke: export → import → runnable + contract restored | med |
+
+## H3–H4
 
 Milestone breakdowns to be drafted when their horizon is next (scope lives in `DESIGN.md` →
-*Product scope*). H2 = composition & ecosystem; H3 = reach/multimodal/mobile; H4 = beyond
-software / robotics.
+*Product scope*). H3 = reach/multimodal/mobile; H4 = beyond software / robotics.
 
 [`DESIGN.md`]: ./DESIGN.md

@@ -11,3 +11,9 @@ export {
 } from "./taste.ts";
 export { writeHandoff } from "./handoff-writer.ts";
 export type { HandoffBundle } from "./handoff-writer.ts";
+export {
+  registerTool,
+  listTools,
+  getTool,
+  toolRegistry,
+} from "./contract-registry.ts";
