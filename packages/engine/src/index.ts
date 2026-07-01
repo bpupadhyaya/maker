@@ -48,3 +48,5 @@ export { importTool } from "./tool-export.ts";
 export type { ToolExport } from "./tool-export.ts";
 export { textInput, voiceInput, sketchInput } from "./input.ts";
 export type { InputModality, InputRequest, Transcriber, SketchDescriber } from "./input.ts";
+export { emitTarget } from "./target.ts";
+export type { BuildTarget, TargetResult, TargetMeta } from "./target.ts";

@@ -177,14 +177,17 @@ cloud connect — `cloudInference` (OpenAI-compatible streaming `InferenceBacken
 `optInBackend`, an off-by-default gate that refuses unless connected; runtime smoke: refuses while
 off, streams when connected. Real cloud call = `needs-user`) · ✅ M3.3 (model auto-upgrade —
 catalog entries versioned; `compareVersions` + `upgradeAvailable` offer a newer model only when
-the catalog advances, never forced; runtime smoke passes. Applying the download = `needs-user`).
+the catalog advances, never forced; runtime smoke passes. Applying the download = `needs-user`) ·
+✅ M3.4 (output targets — `emitTarget`: web (as-is) + pwa (manifest + service worker injected,
+installable) are offline-buildable; android/ios/desktop return a `needs-user` toolchain marker;
+runtime smoke: PWA served + manifest fetched, native targets flagged).
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
 | **M3.1** | Multimodal input seam | text/voice/sketch → one InputRequest | ✅ done (smoke: all modalities normalize; voice builds a tool) | med |
 | **M3.2** | Opt-in cloud connect | a CloudBackend (InferenceBackend), off by default, honest "reach out once" | ✅ done (smoke: refuses while off, streams when connected; real call = needs-user) | med |
 | **M3.3** | Model auto-upgrade | catalog versioning + an upgrade check that never breaks offline | ✅ done (smoke: upgrade offered only when newer; apply = needs-user) | low |
-| **M3.4** | Output targets | target abstraction (web/PWA now; mobile/desktop = needs-user toolchains) | smoke: web/PWA target emitted; others marked needs-user | med |
+| **M3.4** | Output targets | target abstraction (web/PWA now; mobile/desktop = needs-user toolchains) | ✅ done (smoke: PWA served + manifest; native flag needs-user) | med |
 | **M3.5** | Mobile thin-client pairing | pairing protocol scaffold (desktop workshop ↔ phone) | smoke: pairing handshake logic (real devices = needs-user) | high |
 
 ## H4
