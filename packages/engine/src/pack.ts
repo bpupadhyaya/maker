@@ -30,6 +30,16 @@ export interface PackRegistry {
   templateFor(kind: string): Promise<PackTemplate | undefined>;
 }
 
+/**
+ * Parse a reserved ```pack``` block Maker emits — "tools that build tools": a
+ * conversation whose output is a capability pack that extends Maker itself.
+ */
+export function parsePackBlock(text: string): CapabilityPack | undefined {
+  const m = /```pack[^\n]*\n([\s\S]*?)```/.exec(text);
+  if (!m) return undefined;
+  return parsePack(m[1] ?? "");
+}
+
 /** Parse + validate a pack for safe (side)loading. */
 export function parsePack(json: string): CapabilityPack | undefined {
   try {

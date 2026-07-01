@@ -35,12 +35,13 @@ export function synthesizeFiles(modelText: string): Record<string, string> {
   for (let m = fence.exec(modelText); m !== null; m = fence.exec(modelText)) {
     const info = (m[1] ?? "").trim();
     const lang = info.split(/\s+/)[0]?.toLowerCase() ?? "";
-    // Reserved blocks (Brief, checks, contract, robot) are not web tool files.
+    // Reserved blocks are not web tool files.
     if (
       lang === "brief" ||
       lang === "checks" ||
       lang === "contract" ||
-      lang === "robot"
+      lang === "robot" ||
+      lang === "pack"
     ) {
       continue;
     }

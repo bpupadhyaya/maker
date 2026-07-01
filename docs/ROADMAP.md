@@ -211,13 +211,16 @@ external hardware; runtime smoke: requests classified software vs robotics. Robo
 `needs-user`) · ✅ M4.2 (robotics emit + sim — `robotics.ts`: `RobotAction` plan (move/grip/
 release/wait), `parseRobotPlan` (from a ```robot``` block), `simulateRobot` runs it against a
 virtual arm returning a trace + final state; synthesizer skips the robot block; runtime smoke:
-plan parsed + simulated offline. Real robot = `needs-user`).
+plan parsed + simulated offline. Real robot = `needs-user`) · ✅ M4.3 (tools that build tools —
+`parsePackBlock`: Maker authors a ```pack``` block → a `CapabilityPack`; installed into the
+registry, its template builds a real tool; synthesizer skips the pack block; runtime smoke: a
+Maker-authored pack's template serves a running tool).
 
 | # | Milestone | Goal | Acceptance gate | Risk |
 |---|---|---|---|---|
 | **M4.1** | Domain abstraction | a Domain seam (software + robotics) + classification | ✅ done (smoke: requests classified across domains) | med |
 | **M4.2** | Robotics emit + sim | emit a robot action plan; a local simulator "runs" it (real robot = needs-user) | ✅ done (smoke: plan parsed + simulated offline) | high |
-| **M4.3** | Tools that build tools | Maker generates a capability pack from a spec + installs it | smoke: a pack authored by Maker installs + its template is usable | med |
+| **M4.3** | Tools that build tools | Maker generates a capability pack from a spec + installs it | ✅ done (smoke: authored pack installs + its template builds a tool) | med |
 | **M4.4** | Optional commons | a shareable commons index (export/import a set of tools/packs) | smoke: commons bundle round-trips (hosting = needs-user) | med |
 
 [`DESIGN.md`]: ./DESIGN.md
