@@ -1,0 +1,44 @@
+name: release
+
+# Build signed, notarized installers for macOS / Windows / Linux from one
+# codebase (DESIGN.md -> "Build, packaging & cross-platform"). SCAFFOLD:
+# the real build is needs-user — it requires the Rust/Tauri toolchain and
+# signing secrets (Apple Developer ID + notarization; Windows Authenticode /
+# Azure Trusted Signing). Wire the commented steps once those exist.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Release gate — tests + offline gate must pass on this OS
+        run: node --test "packages/**/test/**/*.test.ts"
+
+      # --- needs-user: uncomment once the toolchain + secrets are available ---
+      # - uses: dtolnay/rust-toolchain@stable
+      # - uses: tauri-apps/tauri-action@v0
+      #   env:
+      #     TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      #     APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      #     APPLE_ID: ${{ secrets.APPLE_ID }}
+      #     APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      #     WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      #   with:
+      #     projectPath: packages/gui
+      #     tagName: ${{ github.ref_name }}
+      #     releaseName: "Maker ${{ github.ref_name }}"
+
+      - name: Packaging status
+        run: echo "needs-user: Rust/Tauri toolchain + signing secrets to emit installers"

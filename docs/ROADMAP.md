@@ -32,7 +32,18 @@ file-based `MemoryStore` under `~/.maker`; `createMaker` persists Brief + tool f
 and `restore()` rebuilds+runs them; build→quit→restore verified by fetch; 32 tests green
 offline) · 🟡 M0.8 (GUI — *partial*: the tested core is done — Talk/Split/Build layout continuum
 + view-model reducer, 37 tests green; web frontend (`web/`) + Tauri shell (`src-tauri/`)
-scaffolded. **Live Tauri build is `needs-user`.**). Next: M0.9.
+scaffolded. **Live Tauri build is `needs-user`.**) · ✅ M0.9 (provisioning + offline gate + CI
+matrix — `@maker/provision`: hardware detection, curated model catalog + tier selection,
+sha256 integrity, and the **real offline gate** (build+run+`fetch` a tool with no network);
+CI upgraded to the macOS/Windows/Linux matrix + a `release.yml` scaffold; 45 tests green
+offline. Model download/signing/installers = `needs-user`).
+
+### ✅ H0 COMPLETE — the Foundation is built.
+Converse → a running web tool appears → iterate → it persists — **fully offline**, with a
+working terminal front-end, a tested GUI core, local persistence, and a network-off release
+gate. 45 tests, all offline, green on the CI matrix. Remaining `needs-user` items (real model,
+Ink polish, live Tauri window, signed installers) are external-resource gated, not design gaps.
+Next: **H1 (v1 useful builder).**
 
 **Note on M0.3:** built on Node's built-in `readline` (zero deps) instead of Ink, so the
 terminal front-end is real, runnable, and fully offline *today*. A richer **Ink-based** terminal

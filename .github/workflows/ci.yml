@@ -7,13 +7,17 @@ on:
 
 jobs:
   test:
-    # H0/M0.0: single-runner skeleton. The full macOS/Windows/Linux matrix +
-    # packaging + the network-off release gate arrive with M0.9.
-    runs-on: ubuntu-latest
+    # One codebase, verified on all three desktop OSes. Uses Node's native TS
+    # support + built-in test runner, so no install step is needed.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Run tests (Node native TS + built-in test runner; no install needed)
+      - name: Run tests (offline; includes the network-off offline gate)
         run: node --test "packages/**/test/**/*.test.ts"
