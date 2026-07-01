@@ -41,11 +41,14 @@ test("selectModel picks the strongest model that fits RAM", () => {
 
 test("selectModel falls back to the smallest on very low RAM", () => {
   const m = selectModel(hw(6));
-  assert.equal(m, MODEL_CATALOG.find((x) => x.minMemGB === 12));
+  const smallestFloor = Math.min(...MODEL_CATALOG.map((x) => x.minMemGB));
+  assert.equal(m.minMemGB, smallestFloor);
 });
 
-test("catalog models are permissively licensed (redistribution-safe defaults)", () => {
-  for (const m of MODEL_CATALOG) {
+test("the recommended default per tier is permissively licensed", () => {
+  // The auto-picked defaults are safe (Apache-2.0/MIT); the wider catalog also
+  // offers models under their own terms (Llama/Gemma/Codestral), noted honestly.
+  for (const m of MODEL_CATALOG.filter((x) => x.recommended)) {
     assert.match(m.license, /MIT|Apache-2\.0/);
   }
 });

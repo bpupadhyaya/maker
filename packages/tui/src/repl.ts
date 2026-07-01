@@ -1,6 +1,13 @@
 import * as readline from "node:readline";
 import { pathToFileURL } from "node:url";
-import { createMaker, echoInference, ollamaInference } from "../../engine/src/index.ts";
+import {
+  createMaker,
+  echoInference,
+  ollamaInference,
+  llamaCppInference,
+  mlxInference,
+} from "../../engine/src/index.ts";
+import type { InferenceBackend } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
 import { fileMemoryStore, tasteMemory } from "../../store/src/index.ts";
 import {
@@ -21,10 +28,24 @@ import { runMakerConversation } from "./controller.ts";
  * later polish milestone; it needs a network install of Ink. This REPL keeps
  * the front-end usable and fully offline today.)
  */
+/** Map MAKER_BACKEND to an inference backend (echo = no-model demo). */
+function makeInference(name: string): InferenceBackend {
+  switch (name) {
+    case "ollama":
+      return ollamaInference();
+    case "llamacpp":
+    case "llama.cpp":
+      return llamaCppInference();
+    case "mlx":
+      return mlxInference();
+    default:
+      return echoInference();
+  }
+}
+
 export async function main(): Promise<void> {
   const backendName = process.env["MAKER_BACKEND"] ?? "echo";
-  const inference =
-    backendName === "ollama" ? ollamaInference() : echoInference();
+  const inference = makeInference(backendName);
 
   const store = fileMemoryStore();
   const maker = createMaker({

@@ -126,7 +126,18 @@ Runtime smoke: streamed + verified + provisioned; bad checksum rejected).
   (MLX on Apple Silicon, else llama.cpp); `sideloadInstaller` copies a local file + checksum-verifies;
   wired into TUI `/setup` (shows "via gguf, runtime mlx"). Smoke: selection by platform/preference +
   sideload copy.
-- ⏭️ P6 README: install steps + model-configuration options
+- ✅ P6 README — install steps (download app → `/setup` → offline; dev-run via
+  `node packages/tui/src/repl.ts`), a **model-configuration** section (GGUF/llama.cpp · Ollama ·
+  MLX · sideload), the full **20-model catalog** table across tiers, env vars (`MAKER_BACKEND`,
+  `MAKER_SIDELOAD`, `MAKER_HOME`), and doc pointers. REPL now maps `MAKER_BACKEND` to all
+  backends (echo/ollama/llamacpp/mlx). Suite 56/56 green.
+
+### ✅ P-series COMPLETE — setup is Ollama-free, with many model options.
+`/setup` downloads GGUF weights directly (only-network), runs them via llama.cpp (or MLX on Apple
+Silicon), offers 20 open-source models with Ollama/GGUF/MLX/sideload options, and auto-selects per
+machine. The product is finished and documented; remaining items are external-resource
+`needs-user` (signed installers, the live GUI window, real voice/mobile/robots, and bundling the
+llama.cpp binary + pinning exact GGUF URLs/checksums for a truly zero-dependency `/setup`).
 
 ## H1 — v1 useful builder
 
