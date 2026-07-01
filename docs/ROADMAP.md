@@ -128,7 +128,19 @@ list/disk/switch/remove clean; removing the active model clears it).
   (`serve.ts`) as a sidecar and opens a native window at its URL (native app == the browser GUI,
   in a real window), killing the sidecar on exit; `tauri.conf.json` validated. Compiling +
   signing = `needs-user` (Rust/Tauri toolchain + certs).
-- ⏭️ G6 README — honest install (clone repo + run), model management, env vars
+- ✅ G6 README — honest install: **clone the repo + run** (GUI `node packages/gui/serve.ts`, TUI
+  `node packages/tui/src/repl.ts`), then `/setup`; native installers marked *coming*. Documents
+  model management (download/remove/switch, app-space `~/.maker/models`) and env vars
+  (`MAKER_BACKEND`/`MAKER_SIDELOAD`/`MAKER_HOME`/`MAKER_GUI_PORT`/`MAKER_NO_OPEN`). Links + run
+  targets sanity-checked.
+
+### ✅ G-series COMPLETE — Maker is end-user ready.
+Both front-ends run from source today: **GUI** in the browser (`node packages/gui/serve.ts`) with
+conversation + living tool + Brief + a full **Model panel** (download/remove/switch/disk), and the
+**TUI** turnkey (`/setup`, `/models`, `/use`, `/remove`, auto-open). Models are stored only in
+Maker's app space (`~/.maker/models`) and removed cleanly. The Tauri native window wraps the same
+server (compile/sign = `needs-user`). README tells users to clone + run until signed installers
+exist.
 
 ## Finishing the product (P-series) — Ollama-free setup + many model options
 

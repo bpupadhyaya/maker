@@ -53,42 +53,63 @@ Just three things — no wizard, no progress bar:
 
 ## Status
 
-**Working — 100% on-device and offline.** The full product scope is built: converse → a running
-web tool appears → iterate → it persists; it asks the few questions that matter, verifies what it
-builds, remembers your taste, hands off ejectable tools, composes tools together, and runs a
-local model — all offline. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and
-the short list of items that still need external resources (signed installers, the desktop GUI
-window, real voice/mobile/robots).
-
-Runs on **Node ≥ 23.6** (Node 26 recommended — it runs the TypeScript sources natively, no build
-step).
+**Working — 100% on-device and offline, runs from source today.** The full product scope is
+built: converse → a running web tool appears → iterate → it persists; it asks the few questions
+that matter, verifies what it builds, remembers your taste, hands off ejectable tools, composes
+tools together, and runs a local model — all offline. Both front-ends are usable: a **browser GUI**
+and a **terminal (TUI)**. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and the
+short `needs-user` list (signed installers, the compiled Tauri window, real voice/mobile/robots).
 
 ## Install
 
-### Recommended: download the app → open → `/setup`
+> **Heads up:** signed native installers (`.dmg` / `.msi` / `.AppImage`) don't exist yet — they
+> need code-signing certs + CI. **Until then, the way to install Maker is to clone this repo and
+> run it.** (The code and Tauri packaging are done; only the signed build step is pending.)
 
-Native installers (macOS `.dmg` · Windows `.msi` · Linux `.AppImage`/`.deb`/`.rpm`) are produced
-from one codebase. Once you have the app:
-
-1. **Open Maker.** It's tiny — no model is bundled.
-2. **Run `/setup`** (or click *Set up*). Maker detects your hardware, picks the right open-source
-   model, downloads it, and verifies it. **This is the only step that needs internet.**
-3. **You're offline-capable.** Describe a tool and start building. No account, no subscription.
-
-> You never type `brew`, `ollama`, or any shell command — you trigger setup, the app does the rest.
-
-### Run from source (developer)
+**Requirements:** **Node ≥ 23.6** (Node 26 recommended — it runs the TypeScript sources natively,
+no build step). No other install needed to start.
 
 ```sh
 git clone https://github.com/bpupadhyaya/maker && cd maker
-node packages/tui/src/repl.ts        # the terminal front-end
 ```
 
-Then, in the REPL, type **`/setup`** to install your model, and start describing tools.
-(`node --test "packages/**/test/**/*.test.ts"` runs the suite; no install needed.)
+Then run **either** front-end:
 
-Platform notes: macOS/Linux/Windows all run the same code. On **Apple Silicon**, Maker uses
-**MLX** for the fastest local inference; elsewhere it uses **llama.cpp**.
+```sh
+# GUI — opens the app in your browser
+node packages/gui/serve.ts
+
+# …or the terminal
+node packages/tui/src/repl.ts
+```
+
+**First run — set up your model:** type **`/setup`** (TUI) or click **⛁ Models → Download** (GUI).
+Maker detects your hardware, picks the right open-source model, downloads it into its own space,
+and verifies it. **This is the only step that needs internet** — after it, Maker works fully
+offline. You never type `brew`, `ollama`, or any shell command; you trigger setup, the app does
+the rest.
+
+Then just describe a tool ("build me a tip calculator") and start building. No account, no
+subscription. On **Apple Silicon** Maker uses **MLX** for the fastest local inference; elsewhere
+**llama.cpp**.
+
+> Want to see the flow without downloading a model? Just run it — the default `echo` backend
+> demonstrates the whole loop (questions, the Brief, `/setup`, tool-building) without a model.
+
+*Native installers are coming* — the app is a [Tauri](https://tauri.app) shell around the same
+GUI server, pending the signing/CI setup.
+
+## Managing models
+
+Models are stored in **Maker's own space** — `~/.maker/models` (override with `MAKER_HOME`) —
+**never system-wide**, so they can't collide with other apps and can be removed cleanly to free
+space.
+
+- **GUI:** click **⛁ Models** to open the panel — see installed + available models, **Download**
+  (with a progress bar), **Remove** to free space, **Use** to switch the active model, and your
+  total disk usage.
+- **TUI:** `/models` (list installed + available), `/use <id>` (switch), `/remove <id>` (delete to
+  free space).
 
 ## Model configuration
 
@@ -108,7 +129,9 @@ setup — and `/setup` auto-picks the best one for your machine:
 |---|---|---|
 | `MAKER_BACKEND` | `echo` (default, no-model demo) · `ollama` · `llamacpp` · `mlx` | Which inference runtime to use |
 | `MAKER_SIDELOAD` | path to a local `.gguf` | Install by copying a local file instead of downloading |
-| `MAKER_HOME` | dir (default `~/.maker`) | Where models, tools, and memory live |
+| `MAKER_HOME` | dir (default `~/.maker`) | Where models, tools, and memory live (app space) |
+| `MAKER_GUI_PORT` | port (default `4319`) | Port for the GUI server |
+| `MAKER_NO_OPEN` | set to any value | Don't auto-open the browser / living tool |
 
 ### Model catalog — 20 open-source options
 
