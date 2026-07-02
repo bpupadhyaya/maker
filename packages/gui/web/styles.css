@@ -141,7 +141,9 @@ body {
 .prog-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
 code { background: #0e0e12; padding: 1px 5px; border-radius: 4px; }
 .sep { border: 0; border-top: 1px solid #2a2a31; margin: 16px 0; }
-#onboarding { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; }
+#onboarding { position: fixed; inset: 0; z-index: 20; background: var(--bg); place-items: center; }
+#onboarding:not([hidden]) { display: grid; }
+[hidden] { display: none !important; }
 .onboard-card { max-width: 640px; text-align: center; padding: 24px; }
 .onboard-card h1 { margin: 0 0 6px; }
 .role-chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
