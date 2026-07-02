@@ -134,7 +134,9 @@ isInstalled.
   `llamaCppInference` attaches them to the last user message as OpenAI `image_url` content when
   present, leaving text-only requests as plain strings. Smoke: image + `image_url` in the vision
   request body, plain string for text.
-- ⏭️ H8.4 engine plumbing (images through express)
+- ✅ H8.4 engine plumbing — `session.send`/`maker.express` gained an optional `{ images? }` arg
+  (`TurnOptions`); images flow into the `GenerateRequest`. Text path unchanged (`images` undefined).
+  Smoke: express(images) reaches the backend's `req.images`; express() without → undefined.
 - ⏭️ H8.5 GUI image input (paste/drag/attach)
 - ⏭️ H8.6 TUI + docs + combined smoke
 

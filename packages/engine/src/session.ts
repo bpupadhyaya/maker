@@ -9,9 +9,14 @@ export interface SessionDeps {
   readonly systemPrompt?: string;
 }
 
+/** Per-turn options (e.g. images for vision models). */
+export interface TurnOptions {
+  readonly images?: readonly string[];
+}
+
 export interface Session {
   /** Process one user turn, streaming events as they happen. */
-  send(userMessage: string): AsyncIterable<MakerEvent>;
+  send(userMessage: string, opts?: TurnOptions): AsyncIterable<MakerEvent>;
   /** The conversation so far (for inspection and tests). */
   readonly history: readonly ChatMessage[];
 }
@@ -30,11 +35,15 @@ export function createSession(deps: SessionDeps): Session {
     history.push({ role: "system", content: deps.systemPrompt });
   }
 
-  async function* send(userMessage: string): AsyncIterable<MakerEvent> {
+  async function* send(userMessage: string, opts?: TurnOptions): AsyncIterable<MakerEvent> {
     history.push({ role: "user", content: userMessage });
     let assembled = "";
+    const images = opts?.images;
     try {
-      for await (const chunk of deps.inference.generate({ messages: history })) {
+      for await (const chunk of deps.inference.generate({
+        messages: history,
+        ...(images && images.length ? { images } : {}),
+      })) {
         assembled += chunk;
         yield { type: "assistant-delta", text: chunk };
       }

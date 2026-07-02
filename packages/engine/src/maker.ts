@@ -43,8 +43,9 @@ export interface MakerDeps {
 }
 
 export interface Maker {
-  /** One turn of the spiral: clarify → build → run → verify. Called again = iterate. */
-  express(request: string): AsyncIterable<MakerEvent>;
+  /** One turn of the spiral: clarify → build → run → verify. Called again = iterate.
+   *  `opts.images` (base64 data URIs) attaches images for vision models. */
+  express(request: string, opts?: { images?: readonly string[] }): AsyncIterable<MakerEvent>;
   readonly running: RunningTool | undefined;
   readonly brief: Brief;
   /** Record a ratified decision (also stored in taste-memory, if present). */
@@ -101,7 +102,10 @@ export function createMaker(deps: MakerDeps): Maker {
     for (const c of more) if (!seen.has(c.id)) checks.push(c);
   }
 
-  async function* express(request: string): AsyncIterable<MakerEvent> {
+  async function* express(
+    request: string,
+    opts?: { images?: readonly string[] },
+  ): AsyncIterable<MakerEvent> {
     // Understand: on the first turn, detect the gaps worth asking about.
     if (!gapsChecked) {
       gapsChecked = true;
@@ -125,7 +129,7 @@ export function createMaker(deps: MakerDeps): Maker {
     // Build: ask the model, stream its reply.
     let assembled = "";
     let errored = false;
-    for await (const ev of session.send(request)) {
+    for await (const ev of session.send(request, opts?.images ? { images: opts.images } : undefined)) {
       if (ev.type === "assistant-done") assembled = ev.text;
       if (ev.type === "error") errored = true;
       yield ev;
