@@ -114,7 +114,11 @@ first download, app-space (`~/.maker/runtime`), GUI + TUI.
 build isn't pinned. Smoke: injected fetch, detect, no-op, override. (Real per-OS release URLs/
 checksums = needs-user to pin.)
 
-- ⏭️ H6.2 server lifecycle manager (spawn + health-gate llama-server)
+- ✅ H6.2 server lifecycle manager — `provision/server-manager.ts` `startLlamaServer({binPath,
+  modelPath, port, host?, timeoutMs?, spawn?, fetch?, sleep?})` spawns `llama-server -m <gguf>
+  --host --port`, polls `/health` until ready, returns `{url, port, stop()}`; clear errors on
+  timeout + early child exit; injectable spawn/fetch/sleep. Smoke: ready-after-N-polls, timeout,
+  early-exit — all with a fake server (no real binary).
 - ⏭️ H6.3 turnkey wire (ensureRuntime + start server into /setup + backends)
 - ⏭️ H6.4 checksum trust-on-first-use + pin real GGUF filenames
 - ⏭️ H6.5 docs + combined offline smoke

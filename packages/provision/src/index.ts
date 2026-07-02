@@ -52,3 +52,5 @@ export {
   ensureRuntime,
 } from "./runtime-installer.ts";
 export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";
+export { startLlamaServer } from "./server-manager.ts";
+export type { StartServerOptions, RunningServer, ServerChild } from "./server-manager.ts";
