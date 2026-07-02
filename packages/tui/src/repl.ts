@@ -25,7 +25,6 @@ import type { HookEvent } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
 import {
-  provisionModel,
   detectHardware,
   selectModel,
   chooseInstaller,
@@ -39,6 +38,7 @@ import {
   removeAllModels,
   resetMakerData,
   startModelRuntime,
+  provisionModelAndRuntime,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -155,10 +155,11 @@ export async function main(): Promise<void> {
     );
   }
 
-  // /setup — app-driven provisioning. The user triggers it; the app does the rest.
+  // /setup — app-driven provisioning: downloads the MODEL and the RUNTIME (the
+  // one online step). The user triggers it; the app does the rest.
   async function setup(): Promise<void> {
-    write(`\nSetting up your model (via ${kind}, runtime ${runtimeKind})…\n`);
-    const result = await provisionModel({
+    write(`\nSetting up (via ${kind}, runtime ${runtimeKind}) — downloading your model and runtime…\n`);
+    const { model, runtime } = await provisionModelAndRuntime({
       installer,
       hardware: hw,
       onProgress: (p) => {
@@ -166,7 +167,15 @@ export async function main(): Promise<void> {
         write(`  ${p.message}${pct}\n`);
       },
     });
-    write(result.ok ? "\n✓ Setup complete.\n" : `\n✗ ${result.detail}\n`);
+    if (!model.ok) {
+      write(`\n✗ ${model.detail}\n`);
+      return;
+    }
+    if (runtime.ok) {
+      write(`\n✓ Setup complete — model + runtime ready. Restart Maker and it runs your model offline.\n`);
+    } else {
+      write(`\n✓ Model ready. Runtime not fetched (${runtime.detail}).\n  You can still use sideload or Ollama; retry later with /setup.\n`);
+    }
   }
 
   // Model management commands (all app-space, ~/.maker/models).

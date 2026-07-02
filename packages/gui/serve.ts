@@ -38,6 +38,8 @@ import {
   getActiveModel,
   setActiveModel,
   startModelRuntime,
+  ensureRuntime,
+  shouldFetchRuntime,
 } from "../provision/src/index.ts";
 
 /**
@@ -450,6 +452,15 @@ async function handle(
         res.write(`data: ${JSON.stringify({ ratio, note })}\n\n`),
       );
       await setActiveModel(id);
+      // Also fetch the llama.cpp runtime so the model runs with nothing else to
+      // install (skips for Ollama / a user's MAKER_RUNTIME). Non-fatal.
+      if (shouldFetchRuntime()) {
+        try {
+          await ensureRuntime({ onProgress: (p) => res.write(`data: ${JSON.stringify({ note: p.message })}\n\n`) });
+        } catch (e) {
+          res.write(`data: ${JSON.stringify({ note: `runtime not fetched (${String(e)}) — sideload/Ollama still work` })}\n\n`);
+        }
+      }
       res.write(`data: ${JSON.stringify({ done: true, id })}\n\n`);
     } catch (e) {
       res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`);

@@ -119,7 +119,12 @@ resolve→download.
   locates `llama-server` (archives nest it, e.g. `build/bin/`), copies it to `~/.maker/runtime/` and
   `chmod +x`. Unpack stays injectable (smoke uses a fake). TOFU checksum kept. Smoke: `findServerBinary`
   nested-locate + `ensureRuntime` with injected fetch/unpack.
-- ⏭️ H7.3 download model + runtime during /setup + reconfiguration
+- ✅ H7.3 download model + runtime at setup/reconfig — `provisionModelAndRuntime` downloads the
+  MODEL then the RUNTIME in one guided step (`shouldFetchRuntime` skips it for Ollama /
+  `MAKER_RUNTIME`; runtime fetch is non-fatal — a downloaded model still works via sideload/Ollama).
+  Wired into TUI `setup()` (`/setup`), the `maker setup` CLI, and the GUI `/api/models/download` SSE
+  (after `setActiveModel`). Re-running `/setup` re-ensures both; switching model reuses the runtime.
+  Smoke: model→runtime order, both guards skip, non-fatal failure, GUI/TUI wiring.
 - ⏭️ H7.4 offline gate covers both + docs + combined smoke
 
 ## H6 — turnkey runtime ("download the model, the app does the rest")

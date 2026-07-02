@@ -1,9 +1,11 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { modelsDir, getActiveModel } from "./models-store.ts";
-import { ensureRuntime as realEnsureRuntime } from "./runtime-installer.ts";
+import { ensureRuntime as realEnsureRuntime, runtimeOverride } from "./runtime-installer.ts";
 import { startLlamaServer as realStartServer } from "./server-manager.ts";
 import type { RunningServer } from "./server-manager.ts";
+import { provisionModel as realProvisionModel } from "./provisioner.ts";
+import type { ProvisionOptions, ProvisionResult, ProgressFn } from "./provisioner.ts";
 
 /**
  * Turnkey wire (H6.3) — the glue that makes "download the model, the app does the
@@ -33,6 +35,55 @@ async function exists(p: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Whether we should fetch our own llama.cpp runtime (vs. Ollama / user's own). */
+export function shouldFetchRuntime(): boolean {
+  return process.env["MAKER_BACKEND"] !== "ollama" && !runtimeOverride();
+}
+
+export interface ProvisionAllOptions extends ProvisionOptions {
+  /** Injectable for tests. */
+  readonly provisionModel?: typeof realProvisionModel;
+  readonly ensureRuntime?: typeof realEnsureRuntime;
+}
+
+export interface ProvisionAllResult {
+  readonly model: ProvisionResult;
+  readonly runtime: { ok: boolean; detail: string };
+}
+
+/**
+ * The one guided online step (H7.3): download the MODEL, then the llama.cpp
+ * RUNTIME — so after this the app runs fully offline with nothing else to
+ * install. Skips the runtime fetch for Ollama / a user-provided MAKER_RUNTIME.
+ * The runtime fetch is non-fatal: a downloaded model still works via sideload/
+ * Ollama if the runtime couldn't be fetched.
+ */
+export async function provisionModelAndRuntime(
+  opts: ProvisionAllOptions,
+): Promise<ProvisionAllResult> {
+  const provision = opts.provisionModel ?? realProvisionModel;
+  const ensure = opts.ensureRuntime ?? realEnsureRuntime;
+  const report: ProgressFn = opts.onProgress ?? ((): void => {});
+
+  const model = await provision({
+    installer: opts.installer,
+    ...(opts.hardware ? { hardware: opts.hardware } : {}),
+    ...(opts.catalog ? { catalog: opts.catalog } : {}),
+    onProgress: report,
+  });
+  if (!model.ok) return { model, runtime: { ok: false, detail: "skipped — model download failed" } };
+
+  if (!shouldFetchRuntime()) {
+    return { model, runtime: { ok: true, detail: "using Ollama / your MAKER_RUNTIME" } };
+  }
+  try {
+    await ensure({ onProgress: (p) => report({ phase: "install", message: p.message, ...(p.ratio !== undefined ? { ratio: p.ratio } : {}) }) });
+    return { model, runtime: { ok: true, detail: "llama.cpp runtime ready" } };
+  } catch (e) {
+    return { model, runtime: { ok: false, detail: String(e) } };
   }
 }
 

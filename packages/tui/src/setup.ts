@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import {
-  provisionModel,
+  provisionModelAndRuntime,
   chooseInstaller,
   chooseBackendKind,
   detectHardware,
@@ -27,10 +27,10 @@ export async function main(): Promise<void> {
 
   process.stdout.write(
     `Maker setup — installing ${model.name} for your ${hw.tier} machine ` +
-      `(via ${kind}, runtime ${runtimeKind})…\n`,
+      `(via ${kind}, runtime ${runtimeKind}). Downloading model + runtime…\n`,
   );
 
-  const result = await provisionModel({
+  const { model: result, runtime } = await provisionModelAndRuntime({
     installer,
     hardware: hw,
     onProgress: (p) => {
@@ -39,11 +39,13 @@ export async function main(): Promise<void> {
     },
   });
 
-  process.stdout.write(
-    result.ok
-      ? "\n✓ Setup complete — Maker is offline-capable. Run `maker` to start.\n"
-      : `\n✗ ${result.detail}\n  You can retry later with: maker setup\n`,
-  );
+  if (result.ok && runtime.ok) {
+    process.stdout.write("\n✓ Setup complete — model + runtime ready. Maker is offline-capable. Run `maker` to start.\n");
+  } else if (result.ok) {
+    process.stdout.write(`\n✓ Model ready. Runtime not fetched (${runtime.detail}). Sideload/Ollama still work; retry with: maker setup\n`);
+  } else {
+    process.stdout.write(`\n✗ ${result.detail}\n  You can retry later with: maker setup\n`);
+  }
   process.exitCode = result.ok ? 0 : 1;
 }
 
