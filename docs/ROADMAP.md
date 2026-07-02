@@ -125,7 +125,11 @@ checksums = needs-user to pin.)
   Wired into TUI launch + GUI `startServer`: if a runtime starts, `llamaCppInference` points at it
   and it's stopped on exit; on null/throw, falls back to `makeInference` with an honest note. So a
   downloaded model just runs — zero external tools. Smoke: null-cases, injected success, echo intact.
-- ⏭️ H6.4 checksum trust-on-first-use + pin real GGUF filenames
+- ✅ H6.4 checksum trust-on-first-use + real filenames — `gguf-installer` verifies against a pinned
+  `sha256` when present, else **TOFU**: records the digest to `~/.maker/models/<id>.gguf.sha256` on
+  first download and verifies re-downloads against it (tamper → throw). `removeModel` cleans the
+  `.sha256` sidecar. Low/mid-tier default filenames confirmed real bartowski names, `sha256`
+  intentionally undefined (TOFU). Smoke: TOFU record/verify/tamper + pinned path.
 - ⏭️ H6.5 docs + combined offline smoke
 
 ## H5 — parity (offline-relevant features from Codex / Claude Code)

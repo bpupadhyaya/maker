@@ -34,12 +34,15 @@ export interface ModelEntry {
  * A broad, open-source catalog across tiers. Each entry lists its integration
  * options: an Ollama tag, a direct GGUF URL (llama.cpp path), and an MLX repo
  * (Apple Silicon). GGUF URLs use the Hugging Face `resolve` pattern with a
- * representative Q4_K_M quant — exact filenames + sha256 are pinned/verified per
- * release (needs-user). Licenses noted honestly (some are non-permissive).
+ * representative Q4_K_M quant. The low/mid-tier default filenames below are the
+ * real bartowski GGUF names; their `sha256` is intentionally left undefined so
+ * the installer uses **trust-on-first-use** (records the digest on first download,
+ * verifies re-downloads against it). Pinning exact sha256 per release = needs-user.
+ * Licenses noted honestly (some are non-permissive).
  */
 const HF = "https://huggingface.co";
 export const MODEL_CATALOG: readonly ModelEntry[] = [
-  // ── low tier (≈12GB) ─────────────────────────────────────────────
+  // ── low tier (≈12GB) — real bartowski filenames, sha256 = trust-on-first-use ──
   {
     id: "qwen2.5-coder-3b", name: "Qwen2.5-Coder 3B", tier: "low",
     minMemGB: 12, approxSizeGB: 2, license: "Apache-2.0", version: "2.5.0",

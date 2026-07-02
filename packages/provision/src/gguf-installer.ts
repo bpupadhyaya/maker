@@ -78,12 +78,28 @@ export function ggufInstaller(opts: GgufOptions = {}): ModelInstaller {
         out.on("error", reject);
       });
 
-      const digest = hash.digest("hex");
-      if (entry.sha256 && digest.toLowerCase() !== entry.sha256.toLowerCase()) {
+      const digest = hash.digest("hex").toLowerCase();
+      const sumPath = fileFor(entry) + ".sha256";
+
+      // Verify against the pinned checksum if the catalog has one; otherwise
+      // trust-on-first-use — record the digest on first download and verify
+      // every later download against it (catches a tampered/corrupt re-fetch).
+      const pinned = entry.sha256?.toLowerCase();
+      let expected = pinned;
+      if (!expected) {
+        try {
+          expected = (await fsp.readFile(sumPath, "utf8")).trim().toLowerCase() || undefined;
+        } catch {
+          expected = undefined; // first-use: nothing recorded yet
+        }
+      }
+      if (expected && digest !== expected) {
         await fsp.rm(partPath, { force: true });
         throw new Error(`checksum mismatch for ${entry.name}`);
       }
+
       await fsp.rename(partPath, fileFor(entry));
+      if (!pinned) await fsp.writeFile(sumPath, digest); // TOFU: remember first-seen digest
     },
   };
 }

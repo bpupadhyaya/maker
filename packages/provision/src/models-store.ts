@@ -70,7 +70,7 @@ export async function removeModel(id: string): Promise<boolean> {
   } catch {
     // not installed
   }
-  for (const t of [`${id}.gguf`, `${id}.gguf.part`, `${id}.json`]) {
+  for (const t of [`${id}.gguf`, `${id}.gguf.part`, `${id}.gguf.sha256`, `${id}.json`]) {
     await fs.rm(path.join(dir, t), { force: true });
   }
   if ((await getActiveModel()) === id) await setActiveModel(undefined);
