@@ -1,4 +1,18 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { createServer } from "node:net";
+
+/** Ask the OS for a free localhost port (avoids clashes when swapping models). */
+export function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const addr = srv.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      srv.close(() => resolve(port));
+    });
+  });
+}
 
 /**
  * Server lifecycle manager (H6.2) — spawns and supervises `llama-server` pointed

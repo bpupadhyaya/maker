@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { modelsDir, getActiveModel } from "./models-store.ts";
 import { ensureRuntime as realEnsureRuntime, runtimeOverride } from "./runtime-installer.ts";
-import { startLlamaServer as realStartServer } from "./server-manager.ts";
+import { startLlamaServer as realStartServer, getFreePort } from "./server-manager.ts";
 import type { RunningServer } from "./server-manager.ts";
 import { provisionModel as realProvisionModel } from "./provisioner.ts";
 import type { ProvisionOptions, ProvisionResult, ProgressFn } from "./provisioner.ts";
@@ -106,11 +106,10 @@ export async function startModelRuntime(
   const binPath = await ensure({ onProgress: (p) => opts.onProgress?.(p.message) });
 
   opts.onProgress?.(`Starting ${modelId}…`);
-  const server: RunningServer = await start({
-    binPath,
-    modelPath,
-    ...(opts.port !== undefined ? { port: opts.port } : {}),
-  });
+  // Use a fresh free port each time so swapping models doesn't clash with the
+  // previous llama-server still releasing its port.
+  const port = opts.port ?? (await getFreePort());
+  const server: RunningServer = await start({ binPath, modelPath, port });
 
   return { url: server.url, modelId, stop: server.stop };
 }
