@@ -126,7 +126,10 @@ model** (`~/.maker/models/<id>.mmproj.gguf`, TOFU checksum); `isInstalled` requi
 cleans the mmproj; `mmprojPath(id)` helper. `selectModel` unaffected. Smoke: two-file download +
 isInstalled.
 
-- ⏭️ H8.2 multimodal runtime (`llama-server --mmproj`)
+- ✅ H8.2 multimodal runtime — `startLlamaServer` gained `mmprojPath?` → spawns `llama-server
+  --mmproj <path>` when set; `startModelRuntime` detects a vision model (projector file at
+  `mmprojPath(activeId)`) and passes it, keeping the fresh-free-port fix. Smoke: `--mmproj` present
+  only for vision models; startModelRuntime passes it.
 - ⏭️ H8.3 vision backend (images in the request body)
 - ⏭️ H8.4 engine plumbing (images through express)
 - ⏭️ H8.5 GUI image input (paste/drag/attach)

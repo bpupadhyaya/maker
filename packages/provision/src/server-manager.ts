@@ -34,6 +34,8 @@ type FetchLike = (url: string) => Promise<{ ok: boolean; status: number }>;
 export interface StartServerOptions {
   readonly binPath: string;
   readonly modelPath: string;
+  /** Vision projector (mmproj) path — enables image input when set. */
+  readonly mmprojPath?: string;
   readonly port?: number;
   readonly host?: string;
   /** Overall time to wait for /health to go green. */
@@ -72,14 +74,10 @@ export async function startLlamaServer(
   const doFetch: FetchLike = opts.fetch ?? ((u) => fetch(u) as unknown as ReturnType<FetchLike>);
 
   const url = `http://${host}:${port}`;
-  const child = doSpawn(opts.binPath, [
-    "-m",
-    opts.modelPath,
-    "--host",
-    host,
-    "--port",
-    String(port),
-  ]);
+  const args = ["-m", opts.modelPath, "--host", host, "--port", String(port)];
+  // Vision models need their projector to see images.
+  if (opts.mmprojPath) args.push("--mmproj", opts.mmprojPath);
+  const child = doSpawn(opts.binPath, args);
 
   let exited = false;
   let exitInfo = "";

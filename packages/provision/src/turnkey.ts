@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { modelsDir, getActiveModel } from "./models-store.ts";
+import { modelsDir, getActiveModel, mmprojPath } from "./models-store.ts";
 import { ensureRuntime as realEnsureRuntime, runtimeOverride } from "./runtime-installer.ts";
 import { startLlamaServer as realStartServer, getFreePort } from "./server-manager.ts";
 import type { RunningServer } from "./server-manager.ts";
@@ -99,6 +99,10 @@ export async function startModelRuntime(
   const modelPath = path.join(modelsDir(), `${modelId}.gguf`);
   if (!(await exists(modelPath))) return null; // downloaded via Ollama/sideload, or not yet
 
+  // Vision model? Serve with its projector so it can read images.
+  const projector = mmprojPath(modelId);
+  const hasVision = await exists(projector);
+
   const ensure = opts.ensureRuntime ?? realEnsureRuntime;
   const start = opts.startServer ?? realStartServer;
 
@@ -109,7 +113,12 @@ export async function startModelRuntime(
   // Use a fresh free port each time so swapping models doesn't clash with the
   // previous llama-server still releasing its port.
   const port = opts.port ?? (await getFreePort());
-  const server: RunningServer = await start({ binPath, modelPath, port });
+  const server: RunningServer = await start({
+    binPath,
+    modelPath,
+    port,
+    ...(hasVision ? { mmprojPath: projector } : {}),
+  });
 
   return { url: server.url, modelId, stop: server.stop };
 }
