@@ -215,6 +215,8 @@ export async function startServer(
   };
   await activateModelRuntime();
 
+  const toolsDir = path.join(os.homedir(), ".maker", "tools");
+  let lastToolId: string | undefined;
   const maker: Maker = createMaker({
     inference,
     runtime: localWebRuntime(),
@@ -222,6 +224,7 @@ export async function startServer(
     taste: tasteMemory(store),
     registry: toolRegistry(store),
     onToolBuilt: async (toolId) => {
+      lastToolId = toolId;
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
       await runHooks(store, "tool-built", { toolId });
@@ -231,6 +234,16 @@ export async function startServer(
   await maker.restore();
   await recordSession(store);
   const scheduleRunner = startScheduleRunner(maker, store);
+
+  const exportTool = async (name: string): Promise<string> => {
+    if (!lastToolId) throw new Error("No tool built yet — build one first.");
+    const src = path.join(toolsDir, lastToolId);
+    const safe = (name || "my-tool").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-tool";
+    const dest = path.join(os.homedir(), "Downloads", safe);
+    await fs.rm(dest, { recursive: true, force: true });
+    await fs.cp(src, dest, { recursive: true });
+    return dest;
+  };
 
   const server = http.createServer((req, res) => {
     // Token gate (LAN mode): accept ?token=…, the maker_token cookie, or the
@@ -245,7 +258,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, exportTool).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -277,6 +290,7 @@ async function handle(
   maker: Maker,
   store: ReturnType<typeof fileMemoryStore>,
   activateModelRuntime: () => Promise<string | null>,
+  exportTool: (name: string) => Promise<string>,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -393,6 +407,20 @@ async function handle(
     const removed = await removeHook(store, String(body["id"]));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ removed }));
+    return;
+  }
+
+  // --- export the current tool to a real folder (~/Downloads/<name>) ---
+  if (url === "/api/export" && method === "POST") {
+    const body = await readJson(req);
+    try {
+      const dest = await exportTool(String(body["name"] ?? "my-tool"));
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ path: dest }));
+    } catch (e) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: String(e) }));
+    }
     return;
   }
 

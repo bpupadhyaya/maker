@@ -112,7 +112,7 @@ body {
   background: var(--panel); border-left: 1px solid #2a2a31; z-index: 6;
   overflow: auto; padding: 16px; box-shadow: -12px 0 40px rgba(0,0,0,0.4);
 }
-#macros-btn, #sched-btn, #hooks-btn, #search-btn, #settings-btn, #stats-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+#macros-btn, #sched-btn, #hooks-btn, #search-btn, #settings-btn, #stats-btn, #export-btn { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
 .stat { border: 1px solid #2a2a31; border-radius: 10px; padding: 16px; text-align: center; }
 .stat-val { font-size: 26px; font-weight: 700; color: var(--ink); }

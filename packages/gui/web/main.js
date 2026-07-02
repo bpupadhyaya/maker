@@ -240,6 +240,16 @@ $("#set-theme").addEventListener("change", (e) => saveSetting("theme", e.target.
 $("#set-approval").addEventListener("change", (e) => saveSetting("approvalMode", e.target.value));
 loadSettings();
 
+// ---------- export the current tool ----------
+$("#export-btn").addEventListener("click", async () => {
+  const name = prompt("Save the current tool to ~/Downloads/ as folder name:", "my-tool");
+  if (!name) return;
+  const res = await post("/api/export", { name });
+  const data = await res.json();
+  if (data.path) addTurn("ok", "✓ Saved the tool's files to " + data.path);
+  else addTurn("error", data.error || "Couldn't export — build a tool first.");
+});
+
 // ---------- usage stats ----------
 const statsPanel = $("#stats-panel");
 function openStats() { statsPanel.hidden = false; scrim.hidden = false; loadStats(); }
