@@ -137,7 +137,10 @@ isInstalled.
 - ✅ H8.4 engine plumbing — `session.send`/`maker.express` gained an optional `{ images? }` arg
   (`TurnOptions`); images flow into the `GenerateRequest`. Text path unchanged (`images` undefined).
   Smoke: express(images) reaches the backend's `req.images`; express() without → undefined.
-- ⏭️ H8.5 GUI image input (paste/drag/attach)
+- ✅ H8.5 GUI image input — `/api/express` reads `body.images` and passes to `maker.express`;
+  composer supports **paste (clipboard), drag-drop, and a 📎 attach button** (FileReader →
+  data URIs), shows removable thumbnail chips, sends `{request, images}` and clears; image-only
+  submit defaults to a describe prompt. Smoke: `/api/express` with images → 200/SSE; HTML+JS wiring.
 - ⏭️ H8.6 TUI + docs + combined smoke
 
 ## H7 — real turnkey provisioning (download model + runtime at setup/reconfig)

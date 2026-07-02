@@ -96,14 +96,59 @@ function showTool(url) {
   toolEmpty.style.display = "none";
 }
 
+// ---------- image attachments (vision) ----------
+let pendingImages = []; // data URIs to send with the next message
+function renderAttachments() {
+  const box = document.getElementById("attachments");
+  box.innerHTML = "";
+  pendingImages.forEach((uri, i) => {
+    const chip = document.createElement("span");
+    chip.className = "att-chip";
+    const img = document.createElement("img");
+    img.src = uri;
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.textContent = "✕";
+    rm.title = "Remove";
+    rm.addEventListener("click", () => { pendingImages.splice(i, 1); renderAttachments(); });
+    chip.append(img, rm);
+    box.appendChild(chip);
+  });
+}
+function addImageFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const reader = new FileReader();
+  reader.onload = () => { pendingImages.push(String(reader.result)); renderAttachments(); };
+  reader.readAsDataURL(file);
+}
+document.getElementById("attach-btn").addEventListener("click", () => document.getElementById("file-input").click());
+document.getElementById("file-input").addEventListener("change", (e) => {
+  for (const f of e.target.files) addImageFile(f);
+  e.target.value = "";
+});
+$("#input").addEventListener("paste", (e) => {
+  for (const item of e.clipboardData?.items ?? []) {
+    if (item.type.startsWith("image/")) addImageFile(item.getAsFile());
+  }
+});
+const conv = document.getElementById("conversation");
+conv.addEventListener("dragover", (e) => { e.preventDefault(); });
+conv.addEventListener("drop", (e) => {
+  e.preventDefault();
+  for (const f of e.dataTransfer?.files ?? []) addImageFile(f);
+});
+
 // ---------- conversation (SSE) ----------
 async function express(request) {
-  addTurn("user", request);
+  addTurn("user", pendingImages.length ? `${request}  [${pendingImages.length} image(s)]` : request);
+  const images = pendingImages;
+  pendingImages = [];
+  renderAttachments();
   let streamEl = null;
   const res = await fetch("/api/express", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ request }),
+    body: JSON.stringify({ request, images }),
   });
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -161,8 +206,10 @@ function handleEvent(ev, ensureStream, setStream) {
 $("#composer").addEventListener("submit", (e) => {
   e.preventDefault();
   const input = $("#input");
-  const text = input.value.trim();
+  let text = input.value.trim();
   input.value = "";
+  // Allow sending just an image (no text) — default to a describe prompt.
+  if (!text && pendingImages.length) text = "What's in this image?";
   if (!text) return;
   // approvalMode: "ask" confirms before building (interrogate more).
   if (settings.approvalMode === "ask" && !text.startsWith("/") && !confirm("Build: " + text + " ?")) return;

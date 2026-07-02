@@ -444,9 +444,10 @@ async function handle(
     }
     await recordPrompt(store, request);
     await recordTokens(store, Math.ceil(request.length / 4));
+    const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     sse(res);
     try {
-      for await (const ev of maker.express(request)) {
+      for await (const ev of maker.express(request, images.length ? { images } : undefined)) {
         if (ev.type === "tool-running") void runHooks(store, "tool-running", { url: ev.url });
         res.write(`data: ${JSON.stringify(ev)}\n\n`);
       }

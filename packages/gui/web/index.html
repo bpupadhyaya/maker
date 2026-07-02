@@ -32,8 +32,11 @@
       <section id="conversation" aria-label="conversation">
         <div id="starters" class="starters"></div>
         <div id="transcript"></div>
+        <div id="attachments" class="attachments"></div>
         <form id="composer">
-          <input id="input" placeholder="Describe a tool… (or /setup)" autocomplete="off" />
+          <button type="button" id="attach-btn" title="Attach an image (or paste / drag one in)">📎</button>
+          <input id="input" placeholder="Describe a tool… (or paste/drop an image, /setup)" autocomplete="off" />
+          <input id="file-input" type="file" accept="image/*" multiple hidden />
         </form>
       </section>
 

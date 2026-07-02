@@ -60,7 +60,13 @@ body {
 #transcript .user { color: var(--ink); }
 #transcript .assistant { color: var(--muted); }
 #transcript .error { color: #f7768e; }
-#composer { padding: 10px; border-top: 1px solid #2a2a31; }
+.attachments { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 10px; }
+.att-chip { position: relative; display: inline-block; }
+.att-chip img { height: 44px; width: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #2a2a31; }
+.att-chip button { position: absolute; top: -6px; right: -6px; background: #f7768e; color: #0e0e12; border: 0; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; line-height: 16px; cursor: pointer; padding: 0; }
+#composer { padding: 10px; border-top: 1px solid #2a2a31; display: flex; gap: 8px; align-items: center; }
+#attach-btn { background: transparent; border: 1px solid #2a2a31; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 16px; }
+#composer #input { flex: 1; }
 #input {
   width: 100%;
   padding: 10px;
