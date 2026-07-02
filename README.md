@@ -112,6 +112,24 @@ subscription. On **Apple Silicon** Maker uses **MLX** for the fastest local infe
 *Native installers are coming* — the app is a [Tauri](https://tauri.app) shell around the same
 GUI server, pending the signing/CI setup.
 
+## How the app runs your model (nothing else to install)
+
+You download a model — Maker does the rest. There's **no separate runtime to install**:
+
+1. You pick/download a model (`maker setup`, `/setup`, or **⛁ Models → Download**) — the one
+   step that needs internet. It lands in `~/.maker/models`, checksum-verified.
+2. On the next launch, Maker **fetches a portable [llama.cpp](https://github.com/ggml-org/llama.cpp)
+   runtime** into its own space (`~/.maker/runtime`) — a one-time download, then cached.
+3. Maker **starts `llama-server` itself**, pointed at your downloaded model, waits until it's
+   healthy, and talks to it locally. When you quit, Maker stops it.
+
+So after the initial download it's fully offline and self-contained — no `brew`, no `ollama`, no
+manual server. **Alternatives still work:** if you already run **Ollama** (`MAKER_BACKEND=ollama`)
+or want to point at your **own** `llama-server`/build, set `MAKER_RUNTIME=/path/to/llama-server`
+and Maker uses that instead of fetching one. **Sideload** (`MAKER_SIDELOAD=/path.gguf`) covers
+low/no-connectivity. If a runtime can't be fetched (offline first run, or your platform build isn't
+pinned yet), Maker says so and those alternatives keep you going.
+
 ## Managing models
 
 Models are stored in **Maker's own space** — `~/.maker/models` (override with `MAKER_HOME`) —
@@ -191,6 +209,7 @@ setup — and `/setup` auto-picks the best one for your machine:
 |---|---|---|
 | `MAKER_BACKEND` | `echo` (default, no-model demo) · `ollama` · `llamacpp` · `mlx` | Which inference runtime to use |
 | `MAKER_SIDELOAD` | path to a local `.gguf` | Install by copying a local file instead of downloading |
+| `MAKER_RUNTIME` | path to a `llama-server` binary | Use your own runtime instead of the one Maker fetches into `~/.maker/runtime` |
 | `MAKER_HOME` | dir (default `~/.maker`) | Where models, tools, and memory live (app space) |
 | `MAKER_GUI_PORT` | port (default `4319`) | Port for the GUI server |
 | `MAKER_NO_OPEN` | set to any value | Don't auto-open the browser / living tool |

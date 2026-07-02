@@ -130,7 +130,17 @@ checksums = needs-user to pin.)
   first download and verifies re-downloads against it (tamper → throw). `removeModel` cleans the
   `.sha256` sidecar. Low/mid-tier default filenames confirmed real bartowski names, `sha256`
   intentionally undefined (TOFU). Smoke: TOFU record/verify/tamper + pinned path.
-- ⏭️ H6.5 docs + combined offline smoke
+- ✅ H6.5 docs + combined smoke — README "How the app runs your model (nothing else to install)"
+  section + `MAKER_RUNTIME` in the env-var table; combined offline smoke proves the whole chain
+  (`startModelRuntime` → `ensureRuntime` → `startLlamaServer` → `llamaCppInference.isAvailable()`
+  === true) with injected fetch/spawn, no real binary/network.
+
+**H6 COMPLETE** — "download the model, the app does the rest": the app fetches a portable llama.cpp
+into `~/.maker/runtime`, spawns + health-gates `llama-server` on the downloaded GGUF, and uses it —
+**zero external tools**, offline after first download, with clean fallback (Ollama / sideload /
+`MAKER_RUNTIME`) and trust-on-first-use checksums. Suite 56/56 green. **Remaining = needs-user:**
+pin the real per-platform llama.cpp release URLs + checksums (and real GGUF sha256) so the fetch
+pulls actual binaries.
 
 ## H5 — parity (offline-relevant features from Codex / Claude Code)
 
