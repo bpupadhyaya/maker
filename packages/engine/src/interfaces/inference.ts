@@ -6,6 +6,8 @@ export interface GenerateRequest {
   readonly temperature?: number;
   readonly maxTokens?: number;
   readonly stop?: readonly string[];
+  /** Images (base64 data URIs) attached to the latest user message — vision models. */
+  readonly images?: readonly string[];
 }
 
 /**

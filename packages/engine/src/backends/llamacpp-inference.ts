@@ -38,12 +38,31 @@ export function llamaCppInference(opts: LlamaCppOptions = {}): InferenceBackend 
     },
 
     async *generate(req: GenerateRequest): AsyncIterable<string> {
+      // Attach images (data URIs) to the LAST user message as OpenAI-style
+      // multimodal content; text-only messages stay plain strings.
+      const images = req.images ?? [];
+      const lastUser = images.length
+        ? req.messages.map((m) => m.role).lastIndexOf("user")
+        : -1;
+      const messages = req.messages.map((m, i) => {
+        if (i === lastUser) {
+          return {
+            role: m.role,
+            content: [
+              { type: "text", text: m.content },
+              ...images.map((url) => ({ type: "image_url", image_url: { url } })),
+            ],
+          };
+        }
+        return { role: m.role, content: m.content };
+      });
+
       const res = await doFetch(`${host}/v1/chat/completions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           model: opts.model ?? "local",
-          messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+          messages,
           stream: true,
         }),
       });

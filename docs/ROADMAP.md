@@ -130,7 +130,10 @@ isInstalled.
   --mmproj <path>` when set; `startModelRuntime` detects a vision model (projector file at
   `mmprojPath(activeId)`) and passes it, keeping the fresh-free-port fix. Smoke: `--mmproj` present
   only for vision models; startModelRuntime passes it.
-- ⏭️ H8.3 vision backend (images in the request body)
+- ✅ H8.3 vision backend — `GenerateRequest` gained `images?: readonly string[]` (base64 data URIs);
+  `llamaCppInference` attaches them to the last user message as OpenAI `image_url` content when
+  present, leaving text-only requests as plain strings. Smoke: image + `image_url` in the vision
+  request body, plain string for text.
 - ⏭️ H8.4 engine plumbing (images through express)
 - ⏭️ H8.5 GUI image input (paste/drag/attach)
 - ⏭️ H8.6 TUI + docs + combined smoke
