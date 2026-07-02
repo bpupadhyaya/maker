@@ -202,6 +202,22 @@ Both are checksum-verified and app-space only. **Reconfiguration** (switch model
 re-uses the runtime and only fetches a new model if needed. Nothing is bundled into the app — you
 download exactly what your machine needs, once.
 
+## Reading images (vision)
+
+Maker can **read and interpret images** — paste a screenshot and ask about it, like Claude Code. It
+needs a **vision model** (text models can't see), and it's **100% local**.
+
+1. **Download a vision model** — in **⛁ Models → Download**: **Qwen2.5-VL 7B** (~6 GB, best) or
+   **Moondream2** (~2 GB, tiny/fast). Vision models come as two files (the model + an `mmproj`
+   projector); Maker fetches both and starts the runtime with vision enabled automatically.
+2. **Attach an image and ask:**
+   - **GUI** — **paste** a clipboard image, **drag-drop** an image file, or click **📎** in the
+     composer; a thumbnail appears; type your question and send.
+   - **TUI** — `/image <path-to-image>`, then type your message.
+
+Everything stays on your device — you can read a sensitive screenshot/receipt/doc with nothing
+leaving your machine. (Switch back to a coder model like Qwen2.5-Coder for building.)
+
 ## Managing models
 
 Models are stored in **Maker's own space** — `~/.maker/models` (override with `MAKER_HOME`) —

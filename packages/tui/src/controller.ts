@@ -81,11 +81,16 @@ export async function runConversation(
   await drive((line) => session.send(line), io, opts);
 }
 
-/** Drive the full Maker — builds/verifies/persists real tools. */
+/** Drive the full Maker — builds/verifies/persists real tools. `takeImages`, if
+ *  given, supplies (and clears) any pending images to attach to the next turn. */
 export async function runMakerConversation(
   maker: Maker,
   io: TuiIO,
   opts: RunOptions = {},
+  takeImages?: () => readonly string[] | undefined,
 ): Promise<void> {
-  await drive((line) => maker.express(line), io, opts);
+  await drive((line) => {
+    const images = takeImages?.();
+    return maker.express(line, images && images.length ? { images } : undefined);
+  }, io, opts);
 }

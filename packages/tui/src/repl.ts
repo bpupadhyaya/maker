@@ -1,4 +1,5 @@
 import * as readline from "node:readline";
+import * as fsp from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import {
@@ -346,6 +347,25 @@ export async function main(): Promise<void> {
     }
   };
 
+  // Vision (H8.6): /image attaches an image to the next message.
+  let pendingImages: string[] = [];
+  async function cmdImage(arg: string): Promise<void> {
+    const p = arg.trim();
+    if (!p) {
+      write(`\n${pendingImages.length} image(s) attached to your next message.\n  usage: /image <path-to-image>\n`);
+      return;
+    }
+    try {
+      const buf = await fsp.readFile(p.replace(/^~/, process.env["HOME"] ?? "~"));
+      const ext = (p.split(".").pop() ?? "png").toLowerCase();
+      const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/png";
+      pendingImages.push(`data:${mime};base64,${buf.toString("base64")}`);
+      write(`\n✓ Attached ${p} — send a message (needs a vision model, e.g. /use qwen2.5-vl-7b).\n`);
+    } catch (e) {
+      write(`\n✗ Couldn't read ${p}: ${String(e)}\n`);
+    }
+  }
+
   async function cmdDoctor(): Promise<void> {
     write("\nChecking… (this pings GitHub to resolve the runtime; no big download)\n");
     write(formatDoctor(await runDoctor()));
@@ -474,6 +494,7 @@ export async function main(): Promise<void> {
       "/set": cmdSet,
       "/stats": cmdStats,
       "/doctor": cmdDoctor,
+      "/image": cmdImage,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onRequest: (line) => {
@@ -481,6 +502,10 @@ export async function main(): Promise<void> {
       void recordTokens(store, Math.ceil(line.length / 4));
     },
     onEvent,
+  }, () => {
+    const imgs = pendingImages;
+    pendingImages = [];
+    return imgs;
   });
   scheduleRunner.stop();
   modelRuntimeStop?.();

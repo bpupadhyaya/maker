@@ -141,7 +141,16 @@ isInstalled.
   composer supports **paste (clipboard), drag-drop, and a 📎 attach button** (FileReader →
   data URIs), shows removable thumbnail chips, sends `{request, images}` and clears; image-only
   submit defaults to a describe prompt. Smoke: `/api/express` with images → 200/SSE; HTML+JS wiring.
-- ⏭️ H8.6 TUI + docs + combined smoke
+- ✅ H8.6 TUI + docs + combined smoke — `runMakerConversation` gained a `takeImages` provider;
+  TUI `/image <path>` reads a file → base64 data URI, attaches it to the next message (then clears).
+  README "Reading images (vision)" section. Combined offline smoke: `/image` → next turn's backend
+  `req.images`; `express({images})` → backend receives it end to end.
+
+**H8 COMPLETE** — vision input: paste / drag / attach an image in the GUI, or `/image <path>` in the
+TUI, and Maker reads it — 100% local, using the already-multimodal runtime (`--mmproj`) + a vision
+model (Qwen2.5-VL 7B or Moondream2). Suite 56/56. **Remaining needs-user:** confirm the real
+Qwen2.5-VL / Moondream2 model+mmproj GGUF URLs on a first real download run (`maker doctor` flags
+mismatches), exactly like the coder model.
 
 ## H7 — real turnkey provisioning (download model + runtime at setup/reconfig)
 
