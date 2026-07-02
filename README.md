@@ -60,6 +60,61 @@ tools together, and runs a local model — all offline. Both front-ends are usab
 and a **terminal (TUI)**. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and the
 short `needs-user` list (signed installers, the compiled Tauri window, real voice/mobile/robots).
 
+## Quick start — run the local web app
+
+Maker's GUI runs as a **local web app**: a small Node server on *your* machine, bound to
+`127.0.0.1` (localhost only — nothing leaves your device). From a fresh checkout it's two commands:
+
+**Requirements:** **Node ≥ 23.6** (Node 26 recommended — it runs the TypeScript sources natively, no
+build step) and **git**. Check with `node --version`.
+
+```sh
+git clone https://github.com/bpupadhyaya/maker && cd maker
+node packages/gui/serve.ts
+```
+
+That starts the server and opens **http://127.0.0.1:4319** in your browser. Then:
+
+1. **Download a model** — click **⛁ Models → Download** (pick a small one like *Qwen2.5-Coder 1.5B*
+   ~1 GB to start). The app fetches the model **and** its runtime and starts using it — nothing else
+   to install. *Building real tools needs a model;* without one you'll see the flow on a demo
+   `echo` backend that just echoes.
+2. **Build** — type what you want ("build me a to-do list") and watch it appear on the right.
+3. **Stop the server** — `Ctrl-C` in the terminal.
+
+**Handy flags:**
+
+```sh
+MAKER_GUI_PORT=5000 node packages/gui/serve.ts   # use a different port
+MAKER_NO_OPEN=1      node packages/gui/serve.ts   # don't auto-open the browser
+node packages/tui/src/repl.ts                     # prefer the terminal (tools open in your browser)
+```
+
+> Want a `maker` command + a double-click app icon instead of running the file directly? Run the
+> installer — see **Install** below. Not sure your machine is ready? `node packages/tui/src/doctor.ts`
+> (or `maker doctor`) checks for a model + runtime.
+
+### Browser mode — use Maker from another device (`maker serve`)
+
+Because the GUI is a local web app, you can run the workshop on one machine and open it from another
+— e.g. run it on your desktop and use it from your **phone or tablet on the same Wi-Fi**.
+
+```sh
+maker serve                    # localhost only (default) — same as `maker`
+maker serve --lan              # expose to your network + require a token
+maker serve --lan --port 5000  # custom port
+# (no install? node packages/gui/serve.ts --lan)
+```
+
+- **Default is localhost-only** (`127.0.0.1`) — safe, no token, only this machine can reach it.
+- **`--lan`** binds to your network **and prints an access URL with a one-time token**, e.g.
+  `http://192.168.1.42:4319/?token=…`. Open that on your phone (same Wi-Fi) and you're in — the
+  token is remembered as a cookie after the first visit.
+- The token is **required on every request** in LAN mode, so a random person on your network can't
+  reach your workshop without it.
+- **Security:** only use `--lan` on a network you trust — anyone with the URL + token can use it.
+  It's plain HTTP on your LAN (no TLS), so don't expose it to the public internet. `Ctrl+C` stops it.
+
 ## Install
 
 > **Heads up:** signed native installers (`.dmg` / `.msi` / `.AppImage`) don't exist yet — they

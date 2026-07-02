@@ -101,6 +101,19 @@ mechanical.
 
 ---
 
+## Browser mode — `maker serve` (2026-07-01)
+
+Made the local-web-app delivery an official, documented option alongside the native apps + TUI.
+`maker serve` (== `node packages/gui/serve.ts`) runs the GUI as a local web app; **localhost-only by
+default** (open, safe). **`--lan`** binds to `0.0.0.0` **and requires a token** — prints an access
+URL with a one-time token (`http://<lan-ip>:<port>/?token=…`) so you can open the workshop from your
+phone/tablet on the same Wi-Fi without leaving it open to everyone. Token accepted via `?token=` (→
+cookie), the `maker_token` cookie, or an `x-maker-token` header; every request is gated in LAN mode.
+`serve` wired into the launchers (passes flags through). This is also the substrate for the future
+mobile thin client (H3) — pairing/auth beyond a shared token is the next step there. Smoke: localhost
+open, LAN 401 without token / 200 with (query/cookie/header), `lanAddresses`, `--lan` banner.
+README documents it. Suite 56/56.
+
 ## H7 — real turnkey provisioning (download model + runtime at setup/reconfig)
 
 Goal: make the end-to-end product genuinely work — at initial setup or reconfiguration the app

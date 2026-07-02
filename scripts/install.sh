@@ -42,11 +42,12 @@ cat > "$LAUNCHER" <<EOF
 REPO="$REPO_DIR"
 case "\${1:-gui}" in
   gui)            exec node "\$REPO/packages/gui/serve.ts" ;;
+  serve)          shift; exec node "\$REPO/packages/gui/serve.ts" "\$@" ;;
   tui)            exec node "\$REPO/packages/tui/src/repl.ts" ;;
   setup)          exec node "\$REPO/packages/tui/src/setup.ts" ;;
   doctor)         exec node "\$REPO/packages/tui/src/doctor.ts" ;;
-  -h|--help|help) echo "usage: maker [gui|tui|setup|doctor]" ;;
-  *)              echo "unknown command: \$1"; echo "usage: maker [gui|tui|setup|doctor]"; exit 1 ;;
+  -h|--help|help) echo "usage: maker [gui|serve [--lan] [--port N]|tui|setup|doctor]" ;;
+  *)              echo "unknown command: \$1"; echo "usage: maker [gui|serve|tui|setup|doctor]"; exit 1 ;;
 esac
 EOF
 chmod +x "$LAUNCHER"

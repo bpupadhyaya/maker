@@ -1,8 +1,10 @@
 import * as http from "node:http";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import * as os from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   createMaker,
   echoInference,
@@ -152,11 +154,36 @@ async function serveStatic(res: http.ServerResponse, urlPath: string): Promise<v
 export interface ServeOptions {
   readonly port?: number;
   readonly open?: boolean;
+  /** Bind address. Default 127.0.0.1 (localhost only). "0.0.0.0" exposes to the LAN. */
+  readonly host?: string;
+  /** When set, every request must present this token (LAN mode). */
+  readonly token?: string;
+}
+
+/** LAN IPv4 addresses of this machine (for the "open on your phone" URL). */
+export function lanAddresses(): string[] {
+  const out: string[] = [];
+  for (const ifaces of Object.values(os.networkInterfaces())) {
+    for (const i of ifaces ?? []) {
+      if (i.family === "IPv4" && !i.internal) out.push(i.address);
+    }
+  }
+  return out;
+}
+
+function cookieToken(cookie: string | undefined): string | undefined {
+  return cookie
+    ?.split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith("maker_token="))
+    ?.slice("maker_token=".length);
 }
 
 export async function startServer(
   opts: ServeOptions = {},
-): Promise<{ url: string; close: () => Promise<void> }> {
+): Promise<{ url: string; close: () => Promise<void>; token?: string }> {
+  const host = opts.host ?? "127.0.0.1";
+  const token = opts.token;
   const backendName = process.env["MAKER_BACKEND"] ?? "echo";
   const store = fileMemoryStore();
 
@@ -206,6 +233,18 @@ export async function startServer(
   const scheduleRunner = startScheduleRunner(maker, store);
 
   const server = http.createServer((req, res) => {
+    // Token gate (LAN mode): accept ?token=…, the maker_token cookie, or the
+    // x-maker-token header. Localhost mode (no token) is open as before.
+    if (token) {
+      const q = new URL(req.url ?? "/", "http://localhost").searchParams.get("token");
+      const provided = q ?? cookieToken(req.headers.cookie) ?? (req.headers["x-maker-token"] as string | undefined);
+      if (provided !== token) {
+        res.statusCode = 401;
+        res.end("Unauthorized — open this URL with ?token=… (see the terminal where you ran `maker serve --lan`).");
+        return;
+      }
+      if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
+    }
     void handle(req, res, maker, store, activateModelRuntime).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
@@ -213,7 +252,7 @@ export async function startServer(
   });
 
   const port = opts.port ?? Number(process.env["MAKER_GUI_PORT"] ?? 4319);
-  await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", () => resolve()));
+  await new Promise<void>((resolve) => server.listen(port, host, () => resolve()));
   const addr = server.address();
   const actualPort = typeof addr === "object" && addr !== null ? addr.port : port;
   const url = `http://127.0.0.1:${actualPort}/`;
@@ -222,6 +261,7 @@ export async function startServer(
 
   return {
     url,
+    ...(token ? { token } : {}),
     close: () =>
       new Promise<void>((resolve) => {
         scheduleRunner.stop();
@@ -492,9 +532,51 @@ async function handle(
   res.end("404");
 }
 
+function argValue(args: string[], flag: string): string | undefined {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : undefined;
+}
+
+/**
+ * `maker serve` — the browser mode. Localhost-only by default (open, safe). With
+ * `--lan` it binds to the network AND requires a token, so you can open the
+ * workshop from your phone/tablet on the same Wi-Fi without leaving it open to
+ * everyone. Flags: --lan, --port <n>, --token <t>, --no-open.
+ */
 export async function main(): Promise<void> {
-  const { url } = await startServer({});
-  process.stdout.write(`Maker GUI running → ${url}\n(Backend: ${process.env["MAKER_BACKEND"] ?? "echo"}. Ctrl+C to stop.)\n`);
+  const args = process.argv.slice(2);
+  const lan = args.includes("--lan");
+  const noOpen = args.includes("--no-open") || Boolean(process.env["MAKER_NO_OPEN"]);
+  const port = Number(argValue(args, "--port") ?? process.env["MAKER_GUI_PORT"] ?? 4319);
+  const token = lan ? (argValue(args, "--token") ?? randomBytes(12).toString("hex")) : undefined;
+  const backend = process.env["MAKER_BACKEND"] ?? "echo";
+
+  const { url } = await startServer({
+    port,
+    host: lan ? "0.0.0.0" : "127.0.0.1",
+    open: !noOpen && !lan, // in LAN mode you open it on the OTHER device
+    ...(token ? { token } : {}),
+  });
+
+  if (!lan) {
+    process.stdout.write(`Maker running → ${url}\n(Backend: ${backend}. Localhost only. Ctrl+C to stop.)\n`);
+    return;
+  }
+
+  const actualPort = new URL(url).port;
+  process.stdout.write(
+    `Maker running in LAN mode (backend: ${backend}). Ctrl+C to stop.\n\n` +
+      `Open on another device on this Wi-Fi (include the token):\n`,
+  );
+  const addrs = lanAddresses();
+  if (addrs.length === 0) process.stdout.write("  (no LAN address found)\n");
+  for (const a of addrs) process.stdout.write(`  http://${a}:${actualPort}/?token=${token}\n`);
+  process.stdout.write(
+    `\nOn this machine: http://127.0.0.1:${actualPort}/?token=${token}\n` +
+      `Token: ${token}\n` +
+      `⚠ Anyone on your network with this URL + token can use this workshop. Keep the token private;\n` +
+      `  Ctrl+C stops it.\n`,
+  );
 }
 
 const argv1 = process.argv[1];
