@@ -8,8 +8,8 @@ export { MODEL_CATALOG, selectModel, modelsForTier } from "./catalog.ts";
 export { sha256, verifyChecksum } from "./checksum.ts";
 export { compareVersions, upgradeAvailable } from "./versioning.ts";
 export type { InstalledModel } from "./versioning.ts";
-export type { GateResult } from "./offline-gate.ts";
-export { runOfflineGate } from "./offline-gate.ts";
+export type { GateResult, ProvisionCheck } from "./offline-gate.ts";
+export { runOfflineGate, checkProvisioned } from "./offline-gate.ts";
 export { provisionModel } from "./provisioner.ts";
 export type {
   ModelInstaller,

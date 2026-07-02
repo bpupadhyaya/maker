@@ -130,6 +130,20 @@ and Maker uses that instead of fetching one. **Sideload** (`MAKER_SIDELOAD=/path
 low/no-connectivity. If a runtime can't be fetched (offline first run, or your platform build isn't
 pinned yet), Maker says so and those alternatives keep you going.
 
+### What the initial download includes
+
+The **one guided online step** (`maker setup` / `/setup` / **⛁ Models → Download**) fetches two
+things into `~/.maker`, then you're offline for good:
+
+| Download | Size | Notes |
+|---|---|---|
+| **The model** (a GGUF, sized to your hardware) | **~1–20 GB** | Smallest for low-end (e.g. Qwen2.5-Coder 1.5B ~1 GB); larger on capable machines |
+| **The llama.cpp runtime** (portable binary) | **~tens of MB** | Skipped if you use Ollama or set `MAKER_RUNTIME` |
+
+Both are checksum-verified and app-space only. **Reconfiguration** (switch model, re-run setup)
+re-uses the runtime and only fetches a new model if needed. Nothing is bundled into the app — you
+download exactly what your machine needs, once.
+
 ## Managing models
 
 Models are stored in **Maker's own space** — `~/.maker/models` (override with `MAKER_HOME`) —

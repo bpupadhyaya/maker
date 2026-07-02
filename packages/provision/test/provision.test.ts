@@ -59,10 +59,27 @@ test("verifyChecksum accepts a matching sha256 and rejects a wrong one", () => {
   assert.equal(verifyChecksum(data, "0".repeat(64)), false);
 });
 
-test("the offline gate passes: build + run + serve a tool with no network", async () => {
+test("the offline gate builds+serves offline and reports provisioning (H7.4)", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "maker-gate-"));
-  const result = await runOfflineGate(localWebRuntime({ rootDir: root }));
-  assert.equal(result.passed, true, result.detail);
+  const prevHome = process.env["MAKER_HOME"];
+  const prevBackend = process.env["MAKER_BACKEND"];
+  process.env["MAKER_HOME"] = root; // isolated, empty → not provisioned
+  try {
+    delete process.env["MAKER_BACKEND"];
+    const notReady = await runOfflineGate(localWebRuntime({ rootDir: root }));
+    assert.equal(notReady.provisioned?.ready, false); // no model/runtime yet
+    assert.match(notReady.detail, /builds offline/); // the build+serve half works
+
+    // With a runtime available (Ollama here), the gate certifies offline-ready.
+    process.env["MAKER_BACKEND"] = "ollama";
+    const ready = await runOfflineGate(localWebRuntime({ rootDir: root }));
+    assert.equal(ready.passed, true, ready.detail);
+  } finally {
+    if (prevHome === undefined) delete process.env["MAKER_HOME"];
+    else process.env["MAKER_HOME"] = prevHome;
+    if (prevBackend === undefined) delete process.env["MAKER_BACKEND"];
+    else process.env["MAKER_BACKEND"] = prevBackend;
+  }
 });
 
 test("the offline gate fails cleanly when the runtime is broken", async () => {

@@ -125,7 +125,18 @@ resolve→download.
   Wired into TUI `setup()` (`/setup`), the `maker setup` CLI, and the GUI `/api/models/download` SSE
   (after `setActiveModel`). Re-running `/setup` re-ensures both; switching model reuses the runtime.
   Smoke: model→runtime order, both guards skip, non-fatal failure, GUI/TUI wiring.
-- ⏭️ H7.4 offline gate covers both + docs + combined smoke
+- ✅ H7.4 offline gate + docs + combined smoke — `checkProvisioned()` reports `{model, runtime,
+  ready, detail}` (model = a downloaded GGUF / any installed / Ollama; runtime = fetched llama.cpp /
+  `MAKER_RUNTIME` / Ollama); `runOfflineGate` now certifies offline-ready only when it builds+serves
+  offline **and** is provisioned. README "What the initial download includes" (model ~1–20 GB by
+  tier + runtime ~tens of MB, one-time; reconfiguration re-uses the runtime). Combined smoke drives
+  the REAL path: `resolveRuntimeUrl` → `ensureRuntime` → `startLlamaServer` →
+  `llamaCppInference.isAvailable()` === true (injected fetch/spawn/unpack).
+
+**H7 COMPLETE** — real turnkey provisioning: at setup/reconfiguration the app downloads the model
+**and** resolves+downloads+unpacks the llama.cpp runtime (nothing bundled), then runs 100% offline;
+the gate certifies both are present. Suite 56/56. **Remaining = needs-user:** a real end-to-end
+download run per OS to confirm the live llama.cpp asset names + extraction layout.
 
 ## H6 — turnkey runtime ("download the model, the app does the rest")
 
