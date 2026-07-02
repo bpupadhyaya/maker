@@ -150,6 +150,14 @@ resolve→download.
 **and** resolves+downloads+unpacks the llama.cpp runtime (nothing bundled), then runs 100% offline;
 the gate certifies both are present. Suite 56/56.
 
+- ✅ **CONFIRMED END-TO-END ON REAL macOS-arm64 (2026-07-01):** downloaded Gemma 2 2B (1.6 GB) from
+  the GUI Models panel → the app fetched the real llama.cpp runtime (b9859 `macos-arm64.tar.gz`),
+  extracted it (binary + dylibs kept together), started `llama-server`, hot-swapped the live backend,
+  and a prompt built a **real running tool** (`tool-running → http://…`), no echo, no restart. Fixed
+  two real bugs found only by running it: (1) macOS/Linux assets are `.tar.gz` not `.zip`; (2) the
+  archive ships `llama-server` next to its `.dylib`s, so unpack must keep the tree intact (copying
+  just the binary crashed it with "library not loaded"). **Remaining needs-user shrinks to: the same
+  real run on Windows + Linux** (macOS is now proven; the code path is shared).
 - ✅ **`maker doctor`** (+ TUI `/doctor`) — diagnostic: reports provisioning (`checkProvisioned`) and
   does a runtime **resolution dry-run** (resolves the real asset + HEAD-probes it, no big download).
   Building it immediately caught a real bug: llama.cpp's **macOS/Linux assets are `.tar.gz`, not
