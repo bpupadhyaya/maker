@@ -37,6 +37,7 @@ import {
   resetMakerData,
   getActiveModel,
   setActiveModel,
+  startModelRuntime,
 } from "../provision/src/index.ts";
 
 /**
@@ -156,8 +157,24 @@ export async function startServer(
 ): Promise<{ url: string; close: () => Promise<void> }> {
   const backendName = process.env["MAKER_BACKEND"] ?? "echo";
   const store = fileMemoryStore();
+
+  // Turnkey (H6.3): run the downloaded model ourselves (fetch runtime + start
+  // llama-server) — no external tools. Falls back cleanly if not ready.
+  let inference = makeInference(backendName);
+  let modelRuntimeStop: (() => void) | undefined;
+  try {
+    const runtime = await startModelRuntime();
+    if (runtime) {
+      inference = llamaCppInference({ host: runtime.url });
+      modelRuntimeStop = runtime.stop;
+      process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
+    }
+  } catch (err) {
+    process.stdout.write(`(Local runtime not ready — ${String(err)}; sideload/Ollama still work.)\n`);
+  }
+
   const maker: Maker = createMaker({
-    inference: makeInference(backendName),
+    inference,
     runtime: localWebRuntime(),
     store,
     taste: tasteMemory(store),
@@ -193,6 +210,7 @@ export async function startServer(
     close: () =>
       new Promise<void>((resolve) => {
         scheduleRunner.stop();
+        modelRuntimeStop?.();
         void maker.stop().finally(() => server.close(() => resolve()));
       }),
   };

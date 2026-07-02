@@ -38,6 +38,7 @@ import {
   removeModel,
   removeAllModels,
   resetMakerData,
+  startModelRuntime,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -92,7 +93,23 @@ export async function main(): Promise<void> {
   const activeEntry = active
     ? MODEL_CATALOG.find((m) => m.id === active)
     : undefined;
-  const inference = makeInference(backendName, activeEntry?.ollama);
+
+  // Turnkey (H6.3): if a model is downloaded, the app runs it itself — fetch the
+  // runtime + start llama-server, no external tools. Falls back cleanly otherwise.
+  let inference = makeInference(backendName, activeEntry?.ollama);
+  let modelRuntimeStop: (() => void) | undefined;
+  try {
+    const runtime = await startModelRuntime({
+      onProgress: (msg) => process.stdout.write(`  ${msg}\n`),
+    });
+    if (runtime) {
+      inference = llamaCppInference({ host: runtime.url });
+      modelRuntimeStop = runtime.stop;
+      process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
+    }
+  } catch (err) {
+    process.stdout.write(`(Local runtime not ready — ${String(err)}\n Sideload a .gguf or use Ollama meanwhile.)\n`);
+  }
 
   const store = fileMemoryStore();
   const maker = createMaker({
@@ -450,6 +467,7 @@ export async function main(): Promise<void> {
     onEvent,
   });
   scheduleRunner.stop();
+  modelRuntimeStop?.();
   await maker.stop();
   rl.close();
 }

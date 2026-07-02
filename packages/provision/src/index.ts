@@ -54,3 +54,5 @@ export {
 export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";
 export { startLlamaServer } from "./server-manager.ts";
 export type { StartServerOptions, RunningServer, ServerChild } from "./server-manager.ts";
+export { startModelRuntime } from "./turnkey.ts";
+export type { ModelRuntime, StartModelRuntimeOptions } from "./turnkey.ts";

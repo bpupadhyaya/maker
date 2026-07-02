@@ -119,7 +119,12 @@ checksums = needs-user to pin.)
   --host --port`, polls `/health` until ready, returns `{url, port, stop()}`; clear errors on
   timeout + early child exit; injectable spawn/fetch/sleep. Smoke: ready-after-N-polls, timeout,
   early-exit — all with a fake server (no real binary).
-- ⏭️ H6.3 turnkey wire (ensureRuntime + start server into /setup + backends)
+- ✅ H6.3 turnkey wire — `provision/turnkey.ts` `startModelRuntime()`: resolves the active model's
+  GGUF, returns null (clean fallback) when no active model / GGUF missing / `MAKER_BACKEND=ollama`,
+  else `ensureRuntime` (honors `MAKER_RUNTIME`) + `startLlamaServer` → `{url, modelId, stop}`.
+  Wired into TUI launch + GUI `startServer`: if a runtime starts, `llamaCppInference` points at it
+  and it's stopped on exit; on null/throw, falls back to `makeInference` with an honest note. So a
+  downloaded model just runs — zero external tools. Smoke: null-cases, injected success, echo intact.
 - ⏭️ H6.4 checksum trust-on-first-use + pin real GGUF filenames
 - ⏭️ H6.5 docs + combined offline smoke
 
