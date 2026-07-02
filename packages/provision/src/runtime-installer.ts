@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import { makerHomeDir } from "./models-store.ts";
 
 /**
@@ -126,11 +127,67 @@ export interface EnsureRuntimeOptions {
   readonly unpack?: (payload: Buffer, destDir: string, build: RuntimeBuild) => Promise<void>;
 }
 
+/** Run a command to completion; reject on non-zero exit. */
+function run(cmd: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: "ignore" });
+    child.on("error", reject);
+    child.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`${cmd} exited ${String(code)}`)),
+    );
+  });
+}
+
+/** Recursively find a file named `name` under `dir` (archives nest the binary). */
+export async function findServerBinary(
+  dir: string,
+  name: string,
+): Promise<string | undefined> {
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return undefined;
+  }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isFile() && e.name === name) return full;
+    if (e.isDirectory()) {
+      const found = await findServerBinary(full, name);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Unpack the downloaded llama.cpp archive with the OS's own extractor (no bundled
+ * unzip), locate the server binary (it's typically nested, e.g. build/bin/), and
+ * place it at <runtime>/<serverBin>. Injectable via EnsureRuntimeOptions.unpack.
+ */
 async function defaultUnpack(payload: Buffer, destDir: string, build: RuntimeBuild): Promise<void> {
-  // Real builds ship a zip; unzipping portable archives is platform-specific and
-  // pinned per release (needs-user). The infra writes the payload to the binary
-  // path so the flow + smokes are real end-to-end.
-  await fs.writeFile(path.join(destDir, build.serverBin), payload);
+  const zipPath = path.join(destDir, "runtime-download.zip");
+  const extractDir = path.join(destDir, "unpack");
+  await fs.rm(extractDir, { recursive: true, force: true });
+  await fs.mkdir(extractDir, { recursive: true });
+  await fs.writeFile(zipPath, payload);
+
+  if (process.platform === "win32") {
+    await run("powershell", [
+      "-NoProfile", "-Command",
+      `Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force`,
+    ]);
+  } else if (process.platform === "darwin") {
+    await run("ditto", ["-x", "-k", zipPath, extractDir]);
+  } else {
+    await run("unzip", ["-o", "-q", zipPath, "-d", extractDir]);
+  }
+  await fs.rm(zipPath, { force: true });
+
+  const found = await findServerBinary(extractDir, build.serverBin);
+  if (!found) throw new Error(`${build.serverBin} not found inside the runtime archive.`);
+  const target = path.join(destDir, build.serverBin);
+  if (found !== target) await fs.copyFile(found, target);
 }
 
 /**

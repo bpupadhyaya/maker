@@ -51,6 +51,7 @@ export {
   runtimeOverride,
   detectRuntime,
   resolveRuntimeUrl,
+  findServerBinary,
   ensureRuntime,
 } from "./runtime-installer.ts";
 export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";

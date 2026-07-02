@@ -114,7 +114,11 @@ URL: `RUNTIME_CATALOG` entries carry an `assetMatch` (macos-arm64/macos-x64/ubun
 resolves→downloads. Injectable fetch (handles API + asset). Smoke: per-platform asset match +
 resolve→download.
 
-- ⏭️ H7.2 real unpack (OS unzip + locate llama-server + chmod)
+- ✅ H7.2 real unpack — `defaultUnpack` writes the archive to a temp `.zip` and extracts with the
+  OS tool (win `Expand-Archive`, macOS `ditto`, linux `unzip`), then `findServerBinary` recursively
+  locates `llama-server` (archives nest it, e.g. `build/bin/`), copies it to `~/.maker/runtime/` and
+  `chmod +x`. Unpack stays injectable (smoke uses a fake). TOFU checksum kept. Smoke: `findServerBinary`
+  nested-locate + `ensureRuntime` with injected fetch/unpack.
 - ⏭️ H7.3 download model + runtime during /setup + reconfiguration
 - ⏭️ H7.4 offline gate covers both + docs + combined smoke
 
