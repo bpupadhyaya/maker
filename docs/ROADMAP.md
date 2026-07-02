@@ -101,6 +101,23 @@ mechanical.
 
 ---
 
+## H7 — real turnkey provisioning (download model + runtime at setup/reconfig)
+
+Goal: make the end-to-end product genuinely work — at initial setup or reconfiguration the app
+downloads the big things (LLM + llama.cpp runtime), nothing bundled, then runs 100% offline. Turns
+H6's placeholder runtime coordinates + faked unpack into a real, dynamic fetch.
+
+**Progress:** ✅ H7.1 real runtime resolution — `runtime-installer.ts` resolves the current
+llama.cpp asset dynamically via the releases API (`RUNTIME_RELEASE_API`) instead of a rotting pinned
+URL: `RUNTIME_CATALOG` entries carry an `assetMatch` (macos-arm64/macos-x64/ubuntu-x64/win-cpu-x64),
+`resolveRuntimeUrl` finds the matching `.zip` asset's `browser_download_url`, `ensureRuntime`
+resolves→downloads. Injectable fetch (handles API + asset). Smoke: per-platform asset match +
+resolve→download.
+
+- ⏭️ H7.2 real unpack (OS unzip + locate llama-server + chmod)
+- ⏭️ H7.3 download model + runtime during /setup + reconfiguration
+- ⏭️ H7.4 offline gate covers both + docs + combined smoke
+
 ## H6 — turnkey runtime ("download the model, the app does the rest")
 
 Goal: after the user downloads a model, there is **nothing else to install** — Maker fetches +

@@ -17,23 +17,31 @@ import { makerHomeDir } from "./models-store.ts";
 export interface RuntimeBuild {
   /** e.g. "darwin-arm64". */
   readonly platform: string;
-  /** Download URL of the portable llama.cpp archive/binary. */
-  readonly url: string;
-  /** Pinned sha256 of the download (undefined until pinned per release). */
+  /** Substring identifying this platform's asset in a llama.cpp release. */
+  readonly assetMatch: string;
+  /** Optional explicit URL (override/testing); default resolves dynamically. */
+  readonly url?: string;
+  /** Pinned sha256 of the download (undefined → trust-on-first-use). */
   readonly sha256?: string;
-  /** Path of the server binary inside the unpacked dir (relative). */
+  /** Path of the server binary inside the unpacked archive (relative). */
   readonly serverBin: string;
 }
 
+/** llama.cpp's official releases (the source of the portable runtime). */
+export const RUNTIME_RELEASE_API =
+  "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest";
+
 /**
- * Per-platform portable llama.cpp builds. URLs/checksums are placeholders to be
- * pinned to a specific llama.cpp release (needs-user); the shape + flow are real.
+ * Per-platform portable llama.cpp builds — matched to a real asset in the latest
+ * llama.cpp release (asset names look like `llama-b<NNNN>-bin-macos-arm64.zip`).
+ * The exact build number changes each release, so we resolve the current asset
+ * dynamically via the releases API instead of pinning a URL that rots.
  */
 export const RUNTIME_CATALOG: readonly RuntimeBuild[] = [
-  { platform: "darwin-arm64", url: "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-macos-arm64.zip", serverBin: "llama-server" },
-  { platform: "darwin-x64", url: "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-macos-x64.zip", serverBin: "llama-server" },
-  { platform: "linux-x64", url: "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-linux-x64.zip", serverBin: "llama-server" },
-  { platform: "win-x64", url: "https://github.com/ggml-org/llama.cpp/releases/latest/download/llama-win-x64.zip", serverBin: "llama-server.exe" },
+  { platform: "darwin-arm64", assetMatch: "macos-arm64", serverBin: "llama-server" },
+  { platform: "darwin-x64", assetMatch: "macos-x64", serverBin: "llama-server" },
+  { platform: "linux-x64", assetMatch: "ubuntu-x64", serverBin: "llama-server" },
+  { platform: "win-x64", assetMatch: "win-cpu-x64", serverBin: "llama-server.exe" },
 ];
 
 export function platformKey(
@@ -83,7 +91,33 @@ export interface RuntimeProgress {
   readonly ratio?: number;
 }
 
-type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; arrayBuffer(): Promise<ArrayBuffer> }>;
+type FetchLike = (url: string) => Promise<{
+  ok: boolean;
+  status: number;
+  json?(): Promise<unknown>;
+  arrayBuffer?(): Promise<ArrayBuffer>;
+}>;
+
+/** Resolve the current download URL for a platform's asset via the releases API. */
+export async function resolveRuntimeUrl(
+  build: RuntimeBuild,
+  doFetch: FetchLike,
+): Promise<string> {
+  if (build.url) return build.url;
+  const res = await doFetch(RUNTIME_RELEASE_API);
+  if (!res.ok || !res.json) {
+    throw new Error(`llama.cpp release lookup failed (HTTP ${res.status})`);
+  }
+  const data = (await res.json()) as { assets?: { name?: string; browser_download_url?: string }[] };
+  const assets = Array.isArray(data.assets) ? data.assets : [];
+  const asset = assets.find(
+    (a) => typeof a.name === "string" && a.name.includes(build.assetMatch) && a.name.endsWith(".zip"),
+  );
+  if (!asset?.browser_download_url) {
+    throw new Error(`No llama.cpp asset matching "${build.assetMatch}" in the latest release.`);
+  }
+  return asset.browser_download_url;
+}
 
 export interface EnsureRuntimeOptions {
   readonly onProgress?: (p: RuntimeProgress) => void;
@@ -121,16 +155,24 @@ export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<st
   const dir = runtimeDir();
   await fs.mkdir(dir, { recursive: true });
 
-  opts.onProgress?.({ message: `Fetching the llama.cpp runtime for ${build.platform} (one-time)…` });
-  let res: Awaited<ReturnType<FetchLike>>;
+  opts.onProgress?.({ message: `Finding the latest llama.cpp runtime for ${build.platform}…` });
+  let downloadUrl: string;
   try {
-    res = await doFetch(build.url);
+    downloadUrl = await resolveRuntimeUrl(build, doFetch);
   } catch (e) {
     throw new Error(
-      `Couldn't fetch the runtime (offline?). Sideload a .gguf or use Ollama meanwhile. (${String(e)})`,
+      `Couldn't find the runtime download (offline?). Sideload a .gguf or use Ollama meanwhile. (${String(e)})`,
     );
   }
-  if (!res.ok) throw new Error(`Runtime download failed: HTTP ${res.status}`);
+
+  opts.onProgress?.({ message: "Downloading the runtime (one-time)…" });
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await doFetch(downloadUrl);
+  } catch (e) {
+    throw new Error(`Couldn't download the runtime (offline?). (${String(e)})`);
+  }
+  if (!res.ok || !res.arrayBuffer) throw new Error(`Runtime download failed: HTTP ${res.status}`);
 
   const payload = Buffer.from(await res.arrayBuffer());
   if (build.sha256) {

@@ -43,12 +43,14 @@ export type {
 } from "./chooser.ts";
 export {
   RUNTIME_CATALOG,
+  RUNTIME_RELEASE_API,
   platformKey,
   runtimeDir,
   buildForPlatform,
   serverBinPath,
   runtimeOverride,
   detectRuntime,
+  resolveRuntimeUrl,
   ensureRuntime,
 } from "./runtime-installer.ts";
 export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";
