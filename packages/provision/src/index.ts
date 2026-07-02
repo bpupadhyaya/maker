@@ -41,3 +41,14 @@ export type {
   ChooseInstallerOptions,
   ChooseBackendOptions,
 } from "./chooser.ts";
+export {
+  RUNTIME_CATALOG,
+  platformKey,
+  runtimeDir,
+  buildForPlatform,
+  serverBinPath,
+  runtimeOverride,
+  detectRuntime,
+  ensureRuntime,
+} from "./runtime-installer.ts";
+export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";

@@ -101,6 +101,24 @@ mechanical.
 
 ---
 
+## H6 — turnkey runtime ("download the model, the app does the rest")
+
+Goal: after the user downloads a model, there is **nothing else to install** — Maker fetches +
+runs the llama.cpp runtime itself. Closes the one real gap in "app does the rest." Offline after
+first download, app-space (`~/.maker/runtime`), GUI + TUI.
+
+**Progress:** ✅ H6.1 runtime fetch — `provision/runtime-installer.ts` + per-platform
+`RUNTIME_CATALOG` (darwin-arm64/x64, linux-x64, win-x64 → portable llama.cpp url + sha256);
+`platformKey`/`detectRuntime`/`ensureRuntime(onProgress, fetch)` fetch+verify+unpack+chmod into
+`~/.maker/runtime`, no-op if present; `MAKER_RUNTIME` override wins; honest error when a platform
+build isn't pinned. Smoke: injected fetch, detect, no-op, override. (Real per-OS release URLs/
+checksums = needs-user to pin.)
+
+- ⏭️ H6.2 server lifecycle manager (spawn + health-gate llama-server)
+- ⏭️ H6.3 turnkey wire (ensureRuntime + start server into /setup + backends)
+- ⏭️ H6.4 checksum trust-on-first-use + pin real GGUF filenames
+- ⏭️ H6.5 docs + combined offline smoke
+
 ## H5 — parity (offline-relevant features from Codex / Claude Code)
 
 Goal: match the features from Codex + Claude Code that are relevant to a 100%-offline tool, so
