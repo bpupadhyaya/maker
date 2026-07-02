@@ -74,19 +74,14 @@ export function runtimeOverride(): string | undefined {
   return process.env["MAKER_RUNTIME"];
 }
 
-/** Is a usable llama-server already available (override or fetched)? */
+/** Is a usable llama-server already available (override or fetched)? Searches
+ * recursively, since release archives nest the binary (e.g. build/bin/). */
 export async function detectRuntime(): Promise<string | undefined> {
   const override = runtimeOverride();
   if (override) return override;
   const build = buildForPlatform();
   if (!build) return undefined;
-  const bin = serverBinPath(build);
-  try {
-    await fs.access(bin);
-    return bin;
-  } catch {
-    return undefined;
-  }
+  return findServerBinary(runtimeDir(), build.serverBin);
 }
 
 export interface RuntimeProgress {
@@ -174,26 +169,22 @@ async function defaultUnpack(payload: Buffer, destDir: string, build: RuntimeBui
   // Windows ships a .zip; macOS/Linux ship a .tar.gz (confirmed vs release b9859).
   const isWin = process.platform === "win32";
   const archivePath = path.join(destDir, isWin ? "runtime-download.zip" : "runtime-download.tar.gz");
-  const extractDir = path.join(destDir, "unpack");
-  await fs.rm(extractDir, { recursive: true, force: true });
-  await fs.mkdir(extractDir, { recursive: true });
   await fs.writeFile(archivePath, payload);
 
+  // Extract the whole tree IN PLACE — llama-server ships next to its .dylib/.so
+  // libraries, so we must keep them together (copying just the binary orphans it).
   if (isWin) {
     await run("powershell", [
       "-NoProfile", "-Command",
-      `Expand-Archive -Path '${archivePath}' -DestinationPath '${extractDir}' -Force`,
+      `Expand-Archive -Path '${archivePath}' -DestinationPath '${destDir}' -Force`,
     ]);
   } else {
-    // tar -xzf handles .tar.gz on both macOS and Linux.
-    await run("tar", ["-xzf", archivePath, "-C", extractDir]);
+    await run("tar", ["-xzf", archivePath, "-C", destDir]);
   }
   await fs.rm(archivePath, { force: true });
 
-  const found = await findServerBinary(extractDir, build.serverBin);
+  const found = await findServerBinary(destDir, build.serverBin);
   if (!found) throw new Error(`${build.serverBin} not found inside the runtime archive.`);
-  const target = path.join(destDir, build.serverBin);
-  if (found !== target) await fs.copyFile(found, target);
 }
 
 /**
@@ -247,7 +238,7 @@ export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<st
 
   opts.onProgress?.({ message: "Unpacking runtime…", ratio: 0.9 });
   await unpack(payload, dir, build);
-  const bin = serverBinPath(build);
+  const bin = (await findServerBinary(dir, build.serverBin)) ?? serverBinPath(build);
   try {
     await fs.chmod(bin, 0o755);
   } catch {
