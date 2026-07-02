@@ -114,6 +114,24 @@ mobile thin client (H3) — pairing/auth beyond a shared token is the next step 
 open, LAN 401 without token / 200 with (query/cookie/header), `lanAddresses`, `--lan` banner.
 README documents it. Suite 56/56.
 
+## H8 — vision input (read & interpret images, like Claude Code)
+
+Goal: paste/attach an image and Maker reads it. 100% local — the fetched llama.cpp runtime (b9859)
+already ships multimodal (`libmtmd`/`llama-mtmd`/`llava`), so we wire to that. Needs a vision model
+(VLM = model gguf + an mmproj projector).
+
+**Progress:** ✅ H8.1 vision catalog + provisioning — `ModelEntry` gained `vision?`/`mmproj?`; added
+**Moondream2 (2B)** and **Qwen2.5-VL 7B**; the gguf installer downloads the **mmproj alongside the
+model** (`~/.maker/models/<id>.mmproj.gguf`, TOFU checksum); `isInstalled` requires both; `removeModel`
+cleans the mmproj; `mmprojPath(id)` helper. `selectModel` unaffected. Smoke: two-file download +
+isInstalled.
+
+- ⏭️ H8.2 multimodal runtime (`llama-server --mmproj`)
+- ⏭️ H8.3 vision backend (images in the request body)
+- ⏭️ H8.4 engine plumbing (images through express)
+- ⏭️ H8.5 GUI image input (paste/drag/attach)
+- ⏭️ H8.6 TUI + docs + combined smoke
+
 ## H7 — real turnkey provisioning (download model + runtime at setup/reconfig)
 
 Goal: make the end-to-end product genuinely work — at initial setup or reconfiguration the app

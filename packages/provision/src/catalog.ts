@@ -28,6 +28,10 @@ export interface ModelEntry {
   readonly recommended?: boolean;
   /** Pinned checksum of the fetched artifact (filled in per real release). */
   readonly sha256?: string;
+  /** Vision model — can read images. Requires an `mmproj` projector alongside the gguf. */
+  readonly vision?: boolean;
+  /** GGUF URL of the vision projector (mmproj), downloaded next to the model. */
+  readonly mmproj?: string;
 }
 
 /**
@@ -185,6 +189,24 @@ export const MODEL_CATALOG: readonly ModelEntry[] = [
     source: "ollama:llama3.3", ollama: "llama3.3:70b",
     gguf: `${HF}/bartowski/Llama-3.3-70B-Instruct-GGUF/resolve/main/Llama-3.3-70B-Instruct-Q4_K_M.gguf`,
     mlx: "mlx-community/Llama-3.3-70B-Instruct-4bit",
+  },
+
+  // ── vision models (read images) — need a model gguf + an mmproj projector ──
+  // sha256 left undefined (trust-on-first-use); exact GGUF/mmproj filenames are
+  // confirmed on a real download run (needs-user), like the other entries.
+  {
+    id: "moondream2", name: "Moondream2 (vision, 2B)", tier: "low",
+    minMemGB: 8, approxSizeGB: 2, license: "Apache-2.0", version: "2.0.0",
+    source: "hf:vikhyatk/moondream2", vision: true,
+    gguf: `${HF}/vikhyatk/moondream2/resolve/main/moondream2-text-model-f16.gguf`,
+    mmproj: `${HF}/vikhyatk/moondream2/resolve/main/moondream2-mmproj-f16.gguf`,
+  },
+  {
+    id: "qwen2.5-vl-7b", name: "Qwen2.5-VL 7B (vision)", tier: "mid",
+    minMemGB: 16, approxSizeGB: 6, license: "Apache-2.0", version: "2.5.0",
+    source: "hf:ggml-org/Qwen2.5-VL-7B-Instruct-GGUF", vision: true,
+    gguf: `${HF}/ggml-org/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf`,
+    mmproj: `${HF}/ggml-org/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/mmproj-Qwen2.5-VL-7B-Instruct-f16.gguf`,
   },
 ];
 

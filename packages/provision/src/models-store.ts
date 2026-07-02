@@ -17,6 +17,10 @@ export function makerHomeDir(): string {
 export function modelsDir(): string {
   return path.join(makerHomeDir(), "models");
 }
+/** Path to a model's vision projector (mmproj), if it's a vision model. */
+export function mmprojPath(id: string): string {
+  return path.join(modelsDir(), `${id}.mmproj.gguf`);
+}
 
 export interface InstalledModel {
   readonly id: string;
@@ -70,7 +74,10 @@ export async function removeModel(id: string): Promise<boolean> {
   } catch {
     // not installed
   }
-  for (const t of [`${id}.gguf`, `${id}.gguf.part`, `${id}.gguf.sha256`, `${id}.json`]) {
+  for (const t of [
+    `${id}.gguf`, `${id}.gguf.part`, `${id}.gguf.sha256`, `${id}.json`,
+    `${id}.mmproj.gguf`, `${id}.mmproj.gguf.part`, `${id}.mmproj.gguf.sha256`,
+  ]) {
     await fs.rm(path.join(dir, t), { force: true });
   }
   if ((await getActiveModel()) === id) await setActiveModel(undefined);

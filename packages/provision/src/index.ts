@@ -22,6 +22,7 @@ export { ollamaInstaller } from "./ollama-installer.ts";
 export {
   makerHomeDir,
   modelsDir,
+  mmprojPath,
   listInstalledModels,
   modelDiskUsage,
   removeModel,
