@@ -253,6 +253,15 @@ export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<st
   } catch {
     // best-effort (Windows / already-executable)
   }
+  // macOS: strip the quarantine flag so Gatekeeper doesn't block the downloaded
+  // binary (+ its dylibs) when we spawn it. Best-effort.
+  if (process.platform === "darwin") {
+    try {
+      await run("xattr", ["-dr", "com.apple.quarantine", dir]);
+    } catch {
+      // best-effort
+    }
+  }
   opts.onProgress?.({ message: "Runtime ready.", ratio: 1 });
   return bin;
 }

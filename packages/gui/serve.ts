@@ -161,19 +161,32 @@ export async function startServer(
   const store = fileMemoryStore();
 
   // Turnkey (H6.3): run the downloaded model ourselves (fetch runtime + start
-  // llama-server) — no external tools. Falls back cleanly if not ready.
-  let inference = makeInference(backendName);
+  // llama-server) — no external tools. A SWITCHABLE backend so that downloading a
+  // model from the running app starts using it immediately, with no restart.
+  let currentBackend: InferenceBackend = makeInference(backendName);
   let modelRuntimeStop: (() => void) | undefined;
-  try {
-    const runtime = await startModelRuntime();
-    if (runtime) {
-      inference = llamaCppInference({ host: runtime.url });
-      modelRuntimeStop = runtime.stop;
-      process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
+  const inference: InferenceBackend = {
+    name: "maker",
+    isAvailable: () => currentBackend.isAvailable(),
+    generate: (req) => currentBackend.generate(req),
+  };
+  const activateModelRuntime = async (): Promise<string | null> => {
+    try {
+      const runtime = await startModelRuntime();
+      if (runtime) {
+        modelRuntimeStop?.();
+        modelRuntimeStop = runtime.stop;
+        currentBackend = llamaCppInference({ host: runtime.url });
+        process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
+        return runtime.modelId;
+      }
+    } catch (err) {
+      process.stdout.write(`(Local runtime not ready — ${String(err)}; sideload/Ollama still work.)\n`);
+      return `error: ${String(err)}`;
     }
-  } catch (err) {
-    process.stdout.write(`(Local runtime not ready — ${String(err)}; sideload/Ollama still work.)\n`);
-  }
+    return null;
+  };
+  await activateModelRuntime();
 
   const maker: Maker = createMaker({
     inference,
@@ -193,7 +206,7 @@ export async function startServer(
   const scheduleRunner = startScheduleRunner(maker, store);
 
   const server = http.createServer((req, res) => {
-    void handle(req, res, maker, store).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -223,6 +236,7 @@ async function handle(
   res: http.ServerResponse,
   maker: Maker,
   store: ReturnType<typeof fileMemoryStore>,
+  activateModelRuntime: () => Promise<string | null>,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -452,14 +466,14 @@ async function handle(
         res.write(`data: ${JSON.stringify({ ratio, note })}\n\n`),
       );
       await setActiveModel(id);
-      // Also fetch the llama.cpp runtime so the model runs with nothing else to
-      // install (skips for Ollama / a user's MAKER_RUNTIME). Non-fatal.
-      if (shouldFetchRuntime()) {
-        try {
-          await ensureRuntime({ onProgress: (p) => res.write(`data: ${JSON.stringify({ note: p.message })}\n\n`) });
-        } catch (e) {
-          res.write(`data: ${JSON.stringify({ note: `runtime not fetched (${String(e)}) — sideload/Ollama still work` })}\n\n`);
-        }
+      // Fetch the runtime + start it, and hot-swap the running app onto the model
+      // so you can build immediately — no restart. Non-fatal.
+      res.write(`data: ${JSON.stringify({ note: "Model downloaded. Preparing the runtime…" })}\n\n`);
+      const activated = await activateModelRuntime();
+      if (activated && !activated.startsWith("error:")) {
+        res.write(`data: ${JSON.stringify({ note: `Ready — ${activated} is running. You can build now.` })}\n\n`);
+      } else if (activated) {
+        res.write(`data: ${JSON.stringify({ note: `Model ready, but the runtime didn't start (${activated.slice(7)}). Sideload/Ollama still work.` })}\n\n`);
       }
       res.write(`data: ${JSON.stringify({ done: true, id })}\n\n`);
     } catch (e) {
