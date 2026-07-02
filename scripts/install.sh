@@ -44,8 +44,9 @@ case "\${1:-gui}" in
   gui)            exec node "\$REPO/packages/gui/serve.ts" ;;
   tui)            exec node "\$REPO/packages/tui/src/repl.ts" ;;
   setup)          exec node "\$REPO/packages/tui/src/setup.ts" ;;
-  -h|--help|help) echo "usage: maker [gui|tui|setup]" ;;
-  *)              echo "unknown command: \$1"; echo "usage: maker [gui|tui|setup]"; exit 1 ;;
+  doctor)         exec node "\$REPO/packages/tui/src/doctor.ts" ;;
+  -h|--help|help) echo "usage: maker [gui|tui|setup|doctor]" ;;
+  *)              echo "unknown command: \$1"; echo "usage: maker [gui|tui|setup|doctor]"; exit 1 ;;
 esac
 EOF
 chmod +x "$LAUNCHER"

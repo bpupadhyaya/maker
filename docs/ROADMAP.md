@@ -135,8 +135,17 @@ resolve→download.
 
 **H7 COMPLETE** — real turnkey provisioning: at setup/reconfiguration the app downloads the model
 **and** resolves+downloads+unpacks the llama.cpp runtime (nothing bundled), then runs 100% offline;
-the gate certifies both are present. Suite 56/56. **Remaining = needs-user:** a real end-to-end
-download run per OS to confirm the live llama.cpp asset names + extraction layout.
+the gate certifies both are present. Suite 56/56.
+
+- ✅ **`maker doctor`** (+ TUI `/doctor`) — diagnostic: reports provisioning (`checkProvisioned`) and
+  does a runtime **resolution dry-run** (resolves the real asset + HEAD-probes it, no big download).
+  Building it immediately caught a real bug: llama.cpp's **macOS/Linux assets are `.tar.gz`, not
+  `.zip`** — fixed the asset filter (accept `.zip`|`.tar.gz`) and the extractor (`tar -xzf` on
+  macOS/Linux, `Expand-Archive` on Windows). **Runtime resolution now confirmed against the live
+  release (b9859) for all four platforms** (macos-arm64/x64, ubuntu-x64, win-cpu-x64), and the real
+  `maker doctor` on macOS-arm64 reaches the asset (11 MB). **Remaining needs-user (narrowed):** a real
+  extract per OS to confirm the binary's path inside each archive (`findServerBinary` searches
+  recursively, so it's robust to nesting).
 
 ## H6 — turnkey runtime ("download the model, the app does the rest")
 

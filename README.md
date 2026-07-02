@@ -90,6 +90,9 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 
 - **App icon** — double-click **Maker** in *Applications* (macOS), your app menu (Linux), or the
   *Start Menu* (Windows).
+- **Check readiness** — `maker doctor` reports whether a model + runtime are present and does a
+  runtime **resolution dry-run** (confirms the llama.cpp download reaches for your OS, without the
+  big download). Also `/doctor` inside the TUI.
 - **Command** — `maker` (GUI in your browser) · `maker tui` (terminal) · `maker setup` (download a
   model).
 - **Direct** (no install) — `node packages/gui/serve.ts` (GUI) or `node packages/tui/src/repl.ts`

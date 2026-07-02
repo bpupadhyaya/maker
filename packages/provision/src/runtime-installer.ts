@@ -34,9 +34,11 @@ export const RUNTIME_RELEASE_API =
 
 /**
  * Per-platform portable llama.cpp builds — matched to a real asset in the latest
- * llama.cpp release (asset names look like `llama-b<NNNN>-bin-macos-arm64.zip`).
- * The exact build number changes each release, so we resolve the current asset
- * dynamically via the releases API instead of pinning a URL that rots.
+ * llama.cpp release. Confirmed against release b9859: macOS/Linux ship a
+ * `.tar.gz` (e.g. `llama-b9859-bin-macos-arm64.tar.gz`,
+ * `llama-b9859-bin-ubuntu-x64.tar.gz`), Windows a `.zip`
+ * (`llama-b9859-bin-win-cpu-x64.zip`). The build number changes each release, so
+ * we resolve the current asset dynamically via the releases API (no rotting pin).
  */
 export const RUNTIME_CATALOG: readonly RuntimeBuild[] = [
   { platform: "darwin-arm64", assetMatch: "macos-arm64", serverBin: "llama-server" },
@@ -112,7 +114,10 @@ export async function resolveRuntimeUrl(
   const data = (await res.json()) as { assets?: { name?: string; browser_download_url?: string }[] };
   const assets = Array.isArray(data.assets) ? data.assets : [];
   const asset = assets.find(
-    (a) => typeof a.name === "string" && a.name.includes(build.assetMatch) && a.name.endsWith(".zip"),
+    (a) =>
+      typeof a.name === "string" &&
+      a.name.includes(build.assetMatch) &&
+      (a.name.endsWith(".zip") || a.name.endsWith(".tar.gz")),
   );
   if (!asset?.browser_download_url) {
     throw new Error(`No llama.cpp asset matching "${build.assetMatch}" in the latest release.`);
@@ -166,23 +171,24 @@ export async function findServerBinary(
  * place it at <runtime>/<serverBin>. Injectable via EnsureRuntimeOptions.unpack.
  */
 async function defaultUnpack(payload: Buffer, destDir: string, build: RuntimeBuild): Promise<void> {
-  const zipPath = path.join(destDir, "runtime-download.zip");
+  // Windows ships a .zip; macOS/Linux ship a .tar.gz (confirmed vs release b9859).
+  const isWin = process.platform === "win32";
+  const archivePath = path.join(destDir, isWin ? "runtime-download.zip" : "runtime-download.tar.gz");
   const extractDir = path.join(destDir, "unpack");
   await fs.rm(extractDir, { recursive: true, force: true });
   await fs.mkdir(extractDir, { recursive: true });
-  await fs.writeFile(zipPath, payload);
+  await fs.writeFile(archivePath, payload);
 
-  if (process.platform === "win32") {
+  if (isWin) {
     await run("powershell", [
       "-NoProfile", "-Command",
-      `Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force`,
+      `Expand-Archive -Path '${archivePath}' -DestinationPath '${extractDir}' -Force`,
     ]);
-  } else if (process.platform === "darwin") {
-    await run("ditto", ["-x", "-k", zipPath, extractDir]);
   } else {
-    await run("unzip", ["-o", "-q", zipPath, "-d", extractDir]);
+    // tar -xzf handles .tar.gz on both macOS and Linux.
+    await run("tar", ["-xzf", archivePath, "-C", extractDir]);
   }
-  await fs.rm(zipPath, { force: true });
+  await fs.rm(archivePath, { force: true });
 
   const found = await findServerBinary(extractDir, build.serverBin);
   if (!found) throw new Error(`${build.serverBin} not found inside the runtime archive.`);

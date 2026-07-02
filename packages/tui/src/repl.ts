@@ -24,6 +24,7 @@ import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
 import { ROLES, roleById, STARTERS, starterById, orderedStarters, startersForRoles } from "../../engine/src/index.ts";
 import { renderEvent } from "./render.ts";
+import { runDoctor, formatDoctor } from "./doctor.ts";
 import {
   detectHardware,
   selectModel,
@@ -345,6 +346,11 @@ export async function main(): Promise<void> {
     }
   };
 
+  async function cmdDoctor(): Promise<void> {
+    write("\nChecking… (this pings GitHub to resolve the runtime; no big download)\n");
+    write(formatDoctor(await runDoctor()));
+  }
+
   async function cmdStats(): Promise<void> {
     const s = await getStats(store);
     write("\nYour Maker usage (local only):\n");
@@ -467,6 +473,7 @@ export async function main(): Promise<void> {
       "/settings": cmdSettings,
       "/set": cmdSet,
       "/stats": cmdStats,
+      "/doctor": cmdDoctor,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onRequest: (line) => {
