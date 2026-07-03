@@ -52,6 +52,56 @@ import {
  */
 const WEB_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "web");
 
+/** Assistant prompt for reading/analyzing content (NOT tool-building). */
+const ASSISTANT_PROMPT =
+  "You are Maker's assistant. Read, analyze, summarize, and answer questions about " +
+  "the content the user gives you (files, folders, images, text). Be concise and " +
+  "accurate. You are not building a tool here — just help them understand it.";
+
+const READ_SKIP = new Set([
+  "node_modules", ".git", ".maker", "dist", "build", ".next", ".cache", "vendor", "target",
+]);
+
+/** Read a folder's text files, with limits, for analysis. Skips huge/binary/dep dirs. */
+async function readFolder(
+  dir: string,
+  limits = { maxFiles: 25, maxFileBytes: 8000, maxTotalBytes: 90000 },
+): Promise<{ path: string; content: string }[]> {
+  const out: { path: string; content: string }[] = [];
+  let total = 0;
+  async function walk(cur: string, rel: string): Promise<void> {
+    if (out.length >= limits.maxFiles || total >= limits.maxTotalBytes) return;
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await fs.readdir(cur, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (out.length >= limits.maxFiles || total >= limits.maxTotalBytes) break;
+      if (e.name.startsWith(".") && e.name !== ".gitignore") continue;
+      if (e.isDirectory()) {
+        if (READ_SKIP.has(e.name)) continue;
+        await walk(path.join(cur, e.name), rel ? `${rel}/${e.name}` : e.name);
+      } else if (e.isFile()) {
+        try {
+          const buf = await fs.readFile(path.join(cur, e.name));
+          if (buf.includes(0)) continue; // binary — skip
+          const content = buf.toString("utf8").slice(0, limits.maxFileBytes);
+          out.push({ path: rel ? `${rel}/${e.name}` : e.name, content });
+          total += content.length;
+        } catch {
+          // unreadable — skip
+        }
+      }
+    }
+  }
+  const st = await fs.stat(dir); // throws if the folder doesn't exist
+  if (!st.isDirectory()) throw new Error(`${dir} is not a folder`);
+  await walk(dir, "");
+  return out;
+}
+
 const CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -289,7 +339,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -323,6 +373,7 @@ async function handle(
   activateModelRuntime: () => Promise<string | null>,
   saveToolTo: (dest: string) => Promise<string>,
   resolveDir: (p: string) => string,
+  inference: InferenceBackend,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -467,6 +518,58 @@ async function handle(
     await grantPath(store, resolveDir(String(body["dir"] ?? "")));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // --- read a local folder (with permission), for analysis ---
+  if (url === "/api/read" && method === "POST") {
+    const body = await readJson(req);
+    const dir = resolveDir(String(body["dir"] ?? ""));
+    const force = body["force"] === true;
+    res.setHeader("content-type", "application/json");
+    if (!body["dir"]) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: "no folder given" }));
+      return;
+    }
+    if (!force && !(await isGranted(store, dir))) {
+      res.end(JSON.stringify({ needsPermission: true, dir, parent: path.dirname(dir), action: "read" }));
+      return;
+    }
+    try {
+      const files = await readFolder(dir);
+      res.end(JSON.stringify({ dir, files }));
+    } catch (e) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: String(e) }));
+    }
+    return;
+  }
+
+  // --- general assistant query (analysis; NOT tool-building) ---
+  if (url === "/api/chat" && method === "POST") {
+    const body = await readJson(req);
+    const request = String(body["request"] ?? "");
+    const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
+    await recordPrompt(store, request);
+    sse(res);
+    try {
+      const gen = inference.generate({
+        messages: [
+          { role: "system", content: ASSISTANT_PROMPT },
+          { role: "user", content: request },
+        ],
+        ...(images.length ? { images } : {}),
+      });
+      for await (const chunk of gen) {
+        res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: chunk })}\n\n`);
+      }
+      res.write(`data: ${JSON.stringify({ type: "assistant-done" })}\n\n`);
+    } catch (e) {
+      res.write(`data: ${JSON.stringify({ type: "error", message: String(e) })}\n\n`);
+    }
+    res.write("event: done\ndata: {}\n\n");
+    res.end();
     return;
   }
 

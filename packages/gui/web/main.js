@@ -220,6 +220,14 @@ $("#composer").addEventListener("submit", (e) => {
     saveTo(`${base}/${toolSlug()}`, false);
     return;
   }
+  // "read / analyze / review … <folder path>" → permission-gated folder read.
+  const readVerb = /\b(read|analy[sz]e|review|summari[sz]e|inspect|explain|go through|look (?:at|through)|what'?s in)\b/i.test(text);
+  const pathTok = text.match(/(?:^|\s)(~[^\s]+|\/[^\s]+)/);
+  if (readVerb && pathTok && !text.startsWith("/")) {
+    addTurn("user", text);
+    readAnalyze(pathTok[1].trim(), text, false);
+    return;
+  }
   // approvalMode: "ask" confirms before building (interrogate more).
   if (settings.approvalMode === "ask" && !text.startsWith("/") && !confirm("Build: " + text + " ?")) return;
   express(text).catch((err) => addTurn("error", String(err)));
@@ -255,28 +263,73 @@ function toolSlug() {
   const s = goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   return s || "my-tool";
 }
-async function saveTo(dir, force) {
-  const res = await (await post("/api/save", { dir, force: !!force })).json();
-  if (res.path) { addTurn("ok", "✓ Saved your tool to " + res.path); return; }
-  if (res.needsPermission) { showPermissionCard(res.dir, res.parent); return; }
-  addTurn("error", res.error || "Couldn't save — build a tool first.");
-}
-function showPermissionCard(dir, parent) {
+// Permission card (Claude-Code-style): Allow once / Always allow <folder> / Deny.
+function showPermissionCard(dir, parent, verbPhrase, onAllow, denyMsg) {
   const el = document.createElement("div");
   el.className = "turn permission";
   const q = document.createElement("div");
-  q.innerHTML = `🔒 Maker wants to create and write files in:<br><code>${dir}</code><br>Allow?`;
+  q.innerHTML = `🔒 Maker wants to ${verbPhrase}:<br><code>${dir}</code><br>Allow?`;
   const row = document.createElement("div");
   row.className = "perm-actions";
-  const allowOnce = button("Allow once", async () => { el.remove(); await saveTo(dir, true); });
-  const always = button(`Always allow ${parent}`, async () => { el.remove(); await post("/api/permissions/grant", { dir: parent }); await saveTo(dir, false); });
-  const deny = button("Deny", () => { el.remove(); addTurn("assistant", "Okay — nothing written."); });
+  const allowOnce = button("Allow once", async () => { el.remove(); await onAllow(true); });
+  const always = button(`Always allow ${parent}`, async () => { el.remove(); await post("/api/permissions/grant", { dir: parent }); await onAllow(false); });
+  const deny = button("Deny", () => { el.remove(); addTurn("assistant", denyMsg); });
   deny.className = "danger";
   row.append(allowOnce, always, deny);
   el.append(q, row);
   transcript.appendChild(el);
   transcript.scrollTop = transcript.scrollHeight;
 }
+
+async function saveTo(dir, force) {
+  const res = await (await post("/api/save", { dir, force: !!force })).json();
+  if (res.path) { addTurn("ok", "✓ Saved your tool to " + res.path); return; }
+  if (res.needsPermission) {
+    showPermissionCard(res.dir, res.parent, "create and write files in",
+      (f) => saveTo(dir, f),
+      "Okay — nothing written. You can Allow the folder later, or use ⬇ Save.");
+    return;
+  }
+  addTurn("error", res.error || "Couldn't save — build a tool first.");
+}
+
+// Read a local folder (with permission) and analyze it with the model.
+async function chatStream(request) {
+  const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }) });
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", el = null;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n\n")) >= 0) {
+      const frame = buf.slice(0, nl); buf = buf.slice(nl + 2);
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      let ev; try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+      if (ev.type === "assistant-delta") { if (!el) el = addTurn("assistant", ""); el.textContent += ev.text; transcript.scrollTop = transcript.scrollHeight; }
+      else if (ev.type === "error") addTurn("error", ev.message);
+    }
+  }
+}
+async function readAnalyze(dir, userText, force) {
+  const res = await (await post("/api/read", { dir, force: !!force })).json();
+  if (res.needsPermission) {
+    showPermissionCard(res.dir, res.parent, "read the files in",
+      (f) => readAnalyze(dir, userText, f),
+      `Okay — I won't read ${dir}. I can only analyze folders you allow, or content you paste here. Next: Allow the folder, or paste the files/text you want me to look at.`);
+    return;
+  }
+  if (res.error) { addTurn("error", `Couldn't read ${dir}: ${res.error}. (Is the path right?)`); return; }
+  const files = res.files || [];
+  if (!files.length) { addTurn("assistant", `${dir} has no readable text files to analyze.`); return; }
+  addTurn("assistant", `Read ${files.length} file(s) from ${dir}. Analyzing…`);
+  const ctx = files.map((f) => `--- ${f.path} ---\n${f.content}`).join("\n\n");
+  await chatStream(`${userText}\n\nHere are the files from ${dir} (${files.length}):\n\n${ctx}`);
+}
+
 $("#export-btn").addEventListener("click", () => {
   const dir = prompt("Save the current tool to which folder?", "~/Downloads/" + toolSlug());
   if (dir) saveTo(dir, false);
