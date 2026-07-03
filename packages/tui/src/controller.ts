@@ -46,7 +46,9 @@ async function drive(
   const commands = opts.commands ?? {};
   for await (const line of io.input) {
     const trimmed = line.trim();
-    if (trimmed === "/exit" || trimmed === "/quit") break;
+    // Quit on the natural phrasings too — "quit" without the slash went to the
+    // model, which said goodbye without quitting.
+    if (/^\/?(exit|quit|q)$/i.test(trimmed)) break;
 
     const parts = trimmed.split(/\s+/);
     const head = parts[0] ?? "";
