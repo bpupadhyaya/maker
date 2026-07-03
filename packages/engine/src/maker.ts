@@ -144,14 +144,20 @@ export function createMaker(deps: MakerDeps): Maker {
       yield { type: "brief-updated", brief };
     }
 
+    // Only real content counts — drop blank files. A build with no non-empty
+    // index.html would WIPE the current tool (the runtime clears the dir first),
+    // so in that case keep the last good tool instead of destroying it.
     const files = synthesizeFiles(assembled);
-    if (Object.keys(files).length === 0) {
+    const meaningful = Object.fromEntries(
+      Object.entries(files).filter(([, v]) => v.trim().length > 0),
+    );
+    if (!meaningful["index.html"]) {
       await persist();
       return;
     }
 
     // Build the new tool before tearing down the old (always-runnable).
-    const built = await deps.runtime.build({ id: toolId, files });
+    const built = await deps.runtime.build({ id: toolId, files: meaningful });
     const next = await deps.runtime.run(built);
     if (current) await current.stop();
     current = next;
