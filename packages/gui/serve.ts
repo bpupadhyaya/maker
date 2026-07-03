@@ -236,8 +236,30 @@ export async function startServer(
   const scheduleRunner = startScheduleRunner(maker, store);
 
   const exportTool = async (name: string): Promise<string> => {
-    if (!lastToolId) throw new Error("No tool built yet — build one first.");
-    const src = path.join(toolsDir, lastToolId);
+    // Prefer the tool built this session; else fall back to the most-recently-
+    // modified tool on disk (so Save works after a restart too).
+    let id = lastToolId;
+    if (!id) {
+      try {
+        const entries = await fs.readdir(toolsDir, { withFileTypes: true });
+        const dirs: { name: string; mtime: number }[] = [];
+        for (const e of entries) {
+          if (!e.isDirectory()) continue;
+          try {
+            const st = await fs.stat(path.join(toolsDir, e.name, "index.html"));
+            dirs.push({ name: e.name, mtime: st.mtimeMs });
+          } catch {
+            // no index.html — not a runnable tool dir
+          }
+        }
+        dirs.sort((a, b) => b.mtime - a.mtime);
+        id = dirs[0]?.name;
+      } catch {
+        // no tools dir yet
+      }
+    }
+    if (!id) throw new Error("No tool built yet — build one first.");
+    const src = path.join(toolsDir, id);
     const safe = (name || "my-tool").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-tool";
     const dest = path.join(os.homedir(), "Downloads", safe);
     await fs.rm(dest, { recursive: true, force: true });
