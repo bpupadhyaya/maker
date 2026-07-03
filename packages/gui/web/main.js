@@ -314,6 +314,7 @@ const GUI_COMMANDS = [
   { name: "/schedules", args: "", desc: "schedules panel", run: () => openSched() },
   { name: "/hooks", args: "", desc: "hooks panel", run: () => openHooks() },
   { name: "/settings", args: "", desc: "settings panel", run: () => openSettings() },
+  { name: "/cloud", args: "", desc: "optional cloud AI (off by default)", run: () => openSettings() },
   { name: "/image", args: "", desc: "attach an image (or paste/drag one)", run: () => document.getElementById("file-input").click() },
   { name: "/reset", args: "", desc: "wipe ALL data (asks first)", run: () => $("#reset-all").click() },
   { name: "/bug", args: "", desc: "report a bug on GitHub", run: () => window.open("https://github.com/bpupadhyaya/maker/issues/new", "_blank") },
@@ -440,7 +441,28 @@ async function loadSettings() {
   $("#set-effort").value = settings.effort;
   $("#set-theme").value = settings.theme;
   $("#set-approval").value = settings.approvalMode;
+  loadCloud();
 }
+async function loadCloud() {
+  const c = await (await fetch("/api/cloud")).json();
+  $("#set-cloud-mode").value = c.mode;
+  const list = $("#cloud-list");
+  list.innerHTML = c.providers.length
+    ? c.providers.map((p) => `• ${p.id}: ${p.model} @ ${p.baseUrl} [key ${p.apiKey}] <button data-rm="${p.id}" class="link">remove</button>`).join("<br>")
+    : "No providers — 100% local.";
+  list.querySelectorAll("[data-rm]").forEach((b) =>
+    b.addEventListener("click", async () => { await post("/api/cloud/remove", { id: b.dataset.rm }); loadCloud(); }));
+}
+$("#set-cloud-mode")?.addEventListener("change", (e) => post("/api/cloud/mode", { mode: e.target.value }));
+$("#cloud-add-btn")?.addEventListener("click", async () => {
+  const id = $("#cloud-id").value.trim(), baseUrl = $("#cloud-base").value.trim();
+  const model = $("#cloud-model").value.trim(), apiKey = $("#cloud-key").value.trim();
+  if (!id || !baseUrl || !model || !apiKey) { showToast("Fill id, base URL, model, and key."); return; }
+  await post("/api/cloud/add", { id, label: id, baseUrl, model, apiKey });
+  $("#cloud-key").value = "";
+  showToast("Cloud provider added — set 'Escalate to cloud' to use it.", "info");
+  loadCloud();
+});
 async function saveSetting(key, value) {
   settings = await (await post("/api/settings", { key, value })).json();
   applyTheme();

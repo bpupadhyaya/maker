@@ -194,6 +194,27 @@
         <select id="set-approval"><option value="auto">auto — build first</option><option value="ask">ask — confirm first</option></select>
       </label>
       <p class="muted">The active model is set in the <b>⛁ Models</b> panel.</p>
+
+      <hr class="sep">
+      <h3>Cloud (optional)</h3>
+      <p class="muted">Off by default — Maker is 100% local. Optionally connect your own API
+        (OpenAI / Grok / OpenAI-compatible) to escalate hard prompts. Your key stays in
+        <code>~/.maker</code> and is only used when escalation is on.</p>
+      <label class="setting">Escalate to cloud
+        <select id="set-cloud-mode">
+          <option value="never">never — always local</option>
+          <option value="auto">auto — only hard prompts</option>
+          <option value="always">always — every prompt</option>
+        </select>
+      </label>
+      <div id="cloud-list" class="muted"></div>
+      <div id="cloud-add">
+        <input id="cloud-id" placeholder="id (openai / grok / custom)">
+        <input id="cloud-base" placeholder="base URL (e.g. https://api.openai.com/v1)">
+        <input id="cloud-model" placeholder="model (e.g. gpt-4o)">
+        <input id="cloud-key" type="password" placeholder="API key (stays on your device)">
+        <button id="cloud-add-btn">Add provider</button>
+      </div>
     </aside>
 
     <!-- Usage stats -->

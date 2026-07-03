@@ -39,6 +39,11 @@ export { addHook, listHooks, removeHook, runHooks } from "./hooks.ts";
 export type { Hook, HookEvent } from "./hooks.ts";
 export { startWatcher } from "./watcher.ts";
 export type { Watcher, WatcherOptions } from "./watcher.ts";
+export {
+  listProviders, getEscalationMode, setEscalationMode,
+  addProvider, removeProvider, activeProvider, redact,
+} from "./cloud.ts";
+export type { CloudProvider, EscalationMode } from "./cloud.ts";
 export { recordPrompt, listPrompts, historyOverview, searchHistory } from "./history.ts";
 export type { HistoryHit } from "./history.ts";
 export { getSettings, setSetting, DEFAULT_SETTINGS, EFFORT_PRESETS, generationParams } from "./settings.ts";

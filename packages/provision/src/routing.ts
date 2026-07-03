@@ -64,3 +64,32 @@ export function routeModel(opts: {
   }
   return { modelId: active, reason: "chat → active model" };
 }
+
+// --- Complexity gauge + cloud escalation (H9.9) ---
+const HARD_HINT = /\b(refactor|architecture|multi[- ]?file|algorithm|complex|optimi[sz]e|debug this|large|scal(e|ing|able)|concurrency|distributed|performance|migrate|rewrite|state machine|data ?structure)\b/i;
+
+/** Is this request "hard" enough to be worth escalating to a stronger cloud model? */
+export function gaugeComplexity(
+  request: string,
+  opts: { failedLocalVerification?: boolean } = {},
+): { hard: boolean; score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  let score = 0;
+  if (request.length > 280) { score += 1; reasons.push("long request"); }
+  if (HARD_HINT.test(request)) { score += 2; reasons.push("hard-task keywords"); }
+  if (opts.failedLocalVerification) { score += 2; reasons.push("local build failed verification"); }
+  return { hard: score >= 2, score, reasons };
+}
+
+export type EscalationMode = "never" | "auto" | "always";
+
+/** Should this turn go to the cloud? Only when a provider exists AND the mode allows it. */
+export function shouldEscalate(opts: {
+  mode: EscalationMode;
+  hasProvider: boolean;
+  hard: boolean;
+}): boolean {
+  if (!opts.hasProvider || opts.mode === "never") return false;
+  if (opts.mode === "always") return true;
+  return opts.hard; // "auto"
+}

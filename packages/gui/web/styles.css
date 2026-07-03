@@ -160,6 +160,10 @@ body {
 #search-input { width: 100%; padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; margin-bottom: 12px; }
 #macro-add, #sched-add, #hook-add { display: flex; flex-direction: column; gap: 8px; }
 #macro-add input, #sched-add input, #hook-add input, #hook-add select { padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }
+#cloud-add { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+#cloud-add input { padding: 8px; background: var(--bg); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; }
+#cloud-add button { background: var(--accent); color: #0e0e12; border: 0; border-radius: 6px; padding: 8px; font-weight: 600; cursor: pointer; }
+#cloud-list { margin: 8px 0; line-height: 1.8; }
 #macro-add button, #sched-add button, #hook-add button { background: var(--accent); color: #0e0e12; border: 0; border-radius: 6px; padding: 8px; font-weight: 600; cursor: pointer; }
 .panel-head { display: flex; align-items: center; gap: 12px; }
 .panel-head h2 { margin: 0; flex: 1; }

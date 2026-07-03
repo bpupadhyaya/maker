@@ -11,6 +11,7 @@ import {
   ollamaInference,
   llamaCppInference,
   mlxInference,
+  cloudInference,
 } from "../engine/src/index.ts";
 import type { InferenceBackend, Maker } from "../engine/src/index.ts";
 import { localWebRuntime } from "../runtime/src/index.ts";
@@ -24,6 +25,7 @@ import {
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
+  listProviders, getEscalationMode, setEscalationMode, addProvider, removeProvider, activeProvider, redact,
 } from "../store/src/index.ts";
 import type { Settings } from "../store/src/index.ts";
 import type { HookEvent } from "../store/src/index.ts";
@@ -47,6 +49,8 @@ import {
   mmprojPath,
   classifyTask,
   routeModel,
+  gaugeComplexity,
+  shouldEscalate,
 } from "../provision/src/index.ts";
 
 /**
@@ -282,6 +286,21 @@ export async function startServer(
   // Decide + apply routing for a request; returns a transcript note/warn.
   const beginRoute = async (request: string, images: string[]): Promise<{ note?: string; warn?: string }> => {
     requestOverride = undefined;
+    // Cloud escalation (H9.9) — strictly opt-in. Only when a provider is configured
+    // AND the mode allows it (always, or auto + a hard prompt). Off by default.
+    const provider = await activeProvider(store);
+    if (provider) {
+      const mode = await getEscalationMode(store);
+      const gauge = gaugeComplexity(request);
+      if (shouldEscalate({ mode, hasProvider: true, hard: gauge.hard })) {
+        requestOverride = cloudInference({
+          baseUrl: provider.baseUrl, apiKey: provider.apiKey, model: provider.model,
+          label: `${provider.label}/${provider.model}`,
+        });
+        const why = mode === "always" ? "cloud mode: always" : `hard prompt (${gauge.reasons.join(", ")})`;
+        return { note: `☁ Answered by ${provider.label}/${provider.model} — this LEFT YOUR DEVICE over the network (${why}).\n\n` };
+      }
+    }
     const activeId = await getActiveModel();
     const task = classifyTask(request, images.length > 0);
     const installedIds = (await listInstalledModels()).map((m) => m.id);
@@ -609,6 +628,43 @@ async function handle(
   if (url === "/api/doctor" && method === "GET") {
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ text: formatDoctor(await runDoctor()) }));
+    return;
+  }
+  // --- OPTIONAL cloud connect (H9.9) — off by default; keys stay local ---
+  if (url === "/api/cloud" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({
+      providers: (await listProviders(store)).map(redact), // key redacted for display
+      mode: await getEscalationMode(store),
+    }));
+    return;
+  }
+  if (url === "/api/cloud/add" && method === "POST") {
+    const b = await readJson(req);
+    await addProvider(store, {
+      id: String(b["id"] || "custom"),
+      label: String(b["label"] || b["id"] || "cloud"),
+      baseUrl: String(b["baseUrl"] || ""),
+      model: String(b["model"] || ""),
+      apiKey: String(b["apiKey"] || ""),
+    });
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url === "/api/cloud/remove" && method === "POST") {
+    const b = await readJson(req);
+    const ok = await removeProvider(store, String(b["id"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok }));
+    return;
+  }
+  if (url === "/api/cloud/mode" && method === "POST") {
+    const b = await readJson(req);
+    const mode = String(b["mode"]);
+    if (mode === "never" || mode === "auto" || mode === "always") await setEscalationMode(store, mode);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true, mode }));
     return;
   }
   // --- multi-tool workshop (H9.1) ---

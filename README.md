@@ -81,6 +81,23 @@ Everything below runs **on your machine, offline, free** (MIT, no accounts, no g
 - **One-click models** — download, switch (live hot-swap), and remove local models from the app;
   `maker doctor` (and `/doctor full`) verify you're offline-ready.
 
+## Cloud (optional — off by default)
+
+Maker is **100% local and free**. But if you *want* frontier reasoning for the hard 20%,
+you can **optionally** connect your own API (OpenAI, Grok/x.ai, or any OpenAI-compatible
+endpoint) and let Maker **escalate** just the tough prompts to it:
+
+- **GUI:** ⚙ Settings → **Cloud (optional)** → add a provider (id / base URL / model / key)
+  and pick **Escalate to cloud: never · auto · always**.
+- **TUI:** `/cloud add <id> <baseUrl> <model> <apiKey>` · `/cloud mode <never|auto|always>` ·
+  `/cloud list` · `/cloud remove <id>`.
+
+Guarantees: **off by default** (nothing leaves your device until you add a provider *and* set
+mode ≠ never); your **API key stays local** in `~/.maker` and is never logged; **`auto`** only
+escalates prompts the complexity gauge flags as hard (long / refactor / architecture / failed
+local verification); and every cloud answer is labeled **"☁ … LEFT YOUR DEVICE"** so you always
+know when the network was used. Turn it off and Maker is fully offline again.
+
 ## Maker vs cloud agents (Claude Code / Codex / Claude CLI)
 
 Maker isn't trying to beat frontier cloud agents at raw reasoning — it's a different trade.

@@ -10,6 +10,7 @@ import {
   ollamaInference,
   llamaCppInference,
   mlxInference,
+  cloudInference,
 } from "../../engine/src/index.ts";
 import type { InferenceBackend } from "../../engine/src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
@@ -23,6 +24,7 @@ import {
   getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
   grantPath, isGranted, listGrantedPaths, revokePath,
+  listProviders, getEscalationMode, setEscalationMode, addProvider, removeProvider, activeProvider, redact,
 } from "../../store/src/index.ts";
 import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
@@ -48,6 +50,8 @@ import {
   checkProvisioned,
   routeModel,
   mmprojPath,
+  gaugeComplexity,
+  shouldEscalate,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -112,7 +116,25 @@ export async function main(): Promise<void> {
   const inference: InferenceBackend = {
     name: "maker",
     isAvailable: () => currentBackend.isAvailable(),
-    generate: (req) => currentBackend.generate(req),
+    async *generate(req) {
+      // Cloud escalation (H9.9) — opt-in. Only when a provider is configured AND
+      // the mode allows it (always, or auto + a hard prompt). Off by default.
+      const provider = await activeProvider(store);
+      if (provider) {
+        const mode = await getEscalationMode(store);
+        const lastUser = [...req.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const g = gaugeComplexity(lastUser);
+        if (shouldEscalate({ mode, hasProvider: true, hard: g.hard })) {
+          process.stdout.write(`\n☁ Escalating to ${provider.label}/${provider.model} — this LEAVES YOUR DEVICE.\n`);
+          yield* cloudInference({
+            baseUrl: provider.baseUrl, apiKey: provider.apiKey, model: provider.model,
+            label: `${provider.label}/${provider.model}`,
+          }).generate(req);
+          return;
+        }
+      }
+      yield* currentBackend.generate(req);
+    },
   };
   const activateModelRuntime = async (modelId?: string): Promise<string | null> => {
     try {
@@ -614,6 +636,33 @@ export async function main(): Promise<void> {
       return "0.0.0";
     }
   }
+  async function cmdCloud(arg: string): Promise<void> {
+    const [sub, ...rest] = arg.trim().split(/\s+/);
+    if (sub === "add") {
+      const [id, baseUrl, model, apiKey] = rest;
+      if (!id || !baseUrl || !model || !apiKey) {
+        write("usage: /cloud add <id> <baseUrl> <model> <apiKey>\n  e.g. /cloud add openai https://api.openai.com/v1 gpt-4o sk-...\n");
+        return;
+      }
+      await addProvider(store, { id, label: id, baseUrl, model, apiKey });
+      write(`\n✓ Added cloud provider ${id} (${model}). Set escalation: /cloud mode <never|auto|always>\n  Cloud is OPT-IN — nothing leaves your device until mode ≠ never.\n`);
+      return;
+    }
+    if (sub === "remove") { write((await removeProvider(store, rest[0] ?? "")) ? `\n✓ Removed ${rest[0]}\n` : `\n${rest[0]} not found\n`); return; }
+    if (sub === "mode") {
+      const m = rest[0];
+      if (m === "never" || m === "auto" || m === "always") { await setEscalationMode(store, m); write(`\n✓ Escalation mode: ${m}\n`); }
+      else write("usage: /cloud mode <never|auto|always>\n");
+      return;
+    }
+    // list (default)
+    const provs = await listProviders(store);
+    const mode = await getEscalationMode(store);
+    write(`\nCloud providers (OPTIONAL — off unless mode ≠ never):\n`);
+    write(provs.length ? provs.map((p) => `  ${p.id}: ${p.model} @ ${p.baseUrl}  [key ${redact(p).apiKey}]`).join("\n") + "\n" : "  (none)\n");
+    write(`Escalation mode: ${mode}\n  auto = escalate hard prompts · always = every prompt · never = 100% local\n`);
+    write(`\n/cloud add <id> <baseUrl> <model> <apiKey> · /cloud mode <never|auto|always> · /cloud remove <id>\n`);
+  }
   async function cmdRoute(): Promise<void> {
     const activeId = await getActiveModel();
     const installed = await listInstalledModels();
@@ -767,6 +816,7 @@ export async function main(): Promise<void> {
     ["/reset", "[yes]", "wipe ALL data (models, tools, memory)", cmdReset],
     ["/doctor", "[full]", "readiness check (full = really download the runtime)", cmdDoctor],
     ["/route", "", "show which model answers each task type", async () => { await cmdRoute(); }],
+    ["/cloud", "[add|list|remove|mode]", "optional cloud AI (off by default)", cmdCloud],
     ["/tools", "", "list your tools", async () => { await cmdTools(); }],
     ["/open", "<id>", "reopen a tool (continue iterating)", cmdOpen],
     ["/new", "", "start a fresh tool", async () => { await cmdNew(); }],

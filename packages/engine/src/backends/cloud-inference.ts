@@ -15,21 +15,24 @@ export interface CloudOptions {
   readonly baseUrl?: string;
   readonly model?: string;
   readonly apiKey?: string;
+  /** Human label for the transcript note (e.g. "openai/gpt-4o"). */
+  readonly label?: string;
   readonly fetch?: FetchLike;
 }
 
 export function cloudInference(opts: CloudOptions = {}): InferenceBackend {
-  const baseUrl = opts.baseUrl ?? "https://api.openai.com/v1";
+  const baseUrl = (opts.baseUrl ?? "https://api.openai.com/v1").replace(/\/+$/, "");
   const model = opts.model ?? "gpt-4o-mini";
+  const url = /\/chat\/completions$/.test(baseUrl) ? baseUrl : `${baseUrl}/chat/completions`;
   const doFetch: FetchLike = opts.fetch ?? ((i, init) => fetch(i, init));
 
   return {
-    name: "cloud",
+    name: `cloud:${opts.label ?? model}`,
     async isAvailable() {
       return Boolean(opts.apiKey);
     },
     async *generate(req: GenerateRequest): AsyncIterable<string> {
-      const res = await doFetch(`${baseUrl}/chat/completions`, {
+      const res = await doFetch(url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -39,6 +42,8 @@ export function cloudInference(opts: CloudOptions = {}): InferenceBackend {
           model,
           messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
           stream: true,
+          ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+          ...(req.maxTokens !== undefined ? { max_tokens: req.maxTokens } : {}),
         }),
       });
       if (!res.ok) throw new Error(`Cloud HTTP ${res.status} ${res.statusText}`.trim());
