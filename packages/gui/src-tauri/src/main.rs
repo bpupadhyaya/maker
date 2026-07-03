@@ -1,28 +1,35 @@
 // Maker GUI native shell (Tauri v2). It does NOT reimplement anything: it runs
-// the same Node GUI server as the browser build (packages/gui/serve.ts) as a
-// sidecar, then opens a native window pointed at its local URL. So the native
-// app == the browser GUI (conversation + living tool + Brief + model panel),
-// just in a real window.
+// the SAME GUI server as the browser build (packages/gui/serve.ts), compiled to
+// a self-contained sidecar binary (scripts/build-sidecar.mjs), then opens a
+// native window pointed at its local URL. So the native app == the browser GUI.
 //
-// needs-user: build with the Rust toolchain + Tauri CLI (`cargo tauri build`).
-// For production, bundle a Node runtime + serve.ts as a Tauri sidecar binary;
-// in dev this uses system `node`.
+// The sidecar needs NO system Node — it's a standalone binary bundled next to
+// the app (Tauri `externalBin`). The web assets are bundled as a resource and
+// handed to the server via MAKER_WEB_DIR.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use tauri::Manager;
 
 const GUI_PORT: &str = "4319";
 
 struct Sidecar(Mutex<Option<Child>>);
 
-fn spawn_server() -> Option<Child> {
-    // cwd when run via cargo is src-tauri/, so serve.ts is one level up.
-    Command::new("node")
-        .arg("../serve.ts")
+fn sidecar_path() -> std::path::PathBuf {
+    // Tauri places the externalBin next to the app executable, name suffix stripped.
+    let mut p = std::env::current_exe().expect("current exe");
+    p.pop();
+    p.push(if cfg!(windows) { "maker-server.exe" } else { "maker-server" });
+    p
+}
+
+fn spawn_server(web_dir: std::path::PathBuf) -> Option<Child> {
+    Command::new(sidecar_path())
         .env("MAKER_GUI_PORT", GUI_PORT)
         .env("MAKER_NO_OPEN", "1")
+        .env("MAKER_WEB_DIR", web_dir)
         .spawn()
         .ok()
 }
@@ -30,7 +37,12 @@ fn spawn_server() -> Option<Child> {
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            if let Some(child) = spawn_server() {
+            let web_dir = app
+                .path()
+                .resource_dir()
+                .map(|r| r.join("web"))
+                .unwrap_or_default();
+            if let Some(child) = spawn_server(web_dir) {
                 app.manage(Sidecar(Mutex::new(Some(child))));
             }
 

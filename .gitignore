@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Tauri build artifacts (generated in CI from icon-source.png + build-sidecar.mjs)
+packages/gui/src-tauri/binaries/
+packages/gui/src-tauri/icons/
+packages/gui/src-tauri/gen/

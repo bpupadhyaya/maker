@@ -1,54 +1,88 @@
 name: release
 
-# Build signed, notarized installers for macOS / Windows / Linux from one
-# codebase (DESIGN.md -> "Build, packaging & cross-platform"). SCAFFOLD:
-# the real build is needs-user — it requires the Rust/Tauri toolchain and
-# signing secrets (Apple Developer ID + notarization; Windows Authenticode /
-# Azure Trusted Signing). Wire the commented steps once those exist.
+# Build native installers for macOS / Windows / Linux from ONE codebase and
+# upload them to this repo's GitHub Releases (the decided primary distribution
+# channel — see docs/DESIGN.md → Distribution).
+#
+# Phase A (now): UNSIGNED but real artifacts (.dmg / .msi / .AppImage / .deb).
+# Users get an OS "unidentified developer" prompt they click through.
+# Phase B (later): add signing secrets (see the `env:` block) → no warnings.
+#
+# Trigger: push a tag like `v0.1.0`.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # create the GitHub Release + upload assets
 
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            triple: "" # tauri-action picks universal via args below
+          - os: ubuntu-latest
+            triple: ""
+          - os: windows-latest
+            triple: ""
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
 
-      - name: Release gate — tests + offline gate must pass on this OS
+      # Release gate — the test suite + offline build must pass on THIS OS first.
+      - name: Release gate (tests)
         run: node --test "packages/**/test/**/*.test.ts"
 
-      # --- needs-user: uncomment once the toolchain + secrets are available ---
-      # - uses: dtolnay/rust-toolchain@stable
-      # - uses: tauri-apps/tauri-action@v0
-      #   env:
-      #     TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      #     APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      #     APPLE_ID: ${{ secrets.APPLE_ID }}
-      #     APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      #     WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-      #   with:
-      #     projectPath: packages/gui
-      #     tagName: ${{ github.ref_name }}
-      #     releaseName: "Maker ${{ github.ref_name }}"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      # needs-user: after the .dmg is built, drop the uninstaller next to the app
-      # so users see "Uninstall Maker" when they mount the disk image. (The app
-      # also bundles it at Contents/Resources/uninstall.command via tauri.conf.)
-      # - name: Add uninstaller to the .dmg (macOS)
-      #   if: runner.os == 'macOS'
-      #   run: |
-      #     # mount the built dmg read-write, copy scripts/uninstall.command in as
-      #     # "Uninstall Maker.command", then unmount + re-sign/notarize.
-      #     echo "post-process the dmg to include the uninstaller"
+      - name: Install Bun (to compile the self-contained server sidecar)
+        uses: oven-sh/setup-bun@v2
 
-      - name: Packaging status
-        run: echo "needs-user: Rust/Tauri toolchain + signing secrets to emit installers"
+      - name: Linux build deps (webkit2gtk, etc.)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev patchelf build-essential libssl-dev file
+
+      - name: Build the server sidecar (no system Node needed in the app)
+        run: node scripts/build-sidecar.mjs
+
+      - name: Generate app icons from the source PNG
+        run: npx --yes @tauri-apps/cli@2 icon packages/gui/src-tauri/icon-source.png --output packages/gui/src-tauri/icons
+
+      - name: Build + upload installers to the GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # --- Phase B signing (leave secrets unset for unsigned Phase A) ---
+          # macOS Developer ID + notarization:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode (or configure Azure Trusted Signing separately):
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # Tauri updater signing (Phase C):
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: packages/gui
+          tagName: ${{ github.ref_name }}
+          releaseName: "Maker ${{ github.ref_name }}"
+          releaseBody: "Maker — build tools by conversation, on-device and offline. Download the installer for your OS below. First run downloads a local model (the one online step)."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ runner.os == 'macOS' && '--target universal-apple-darwin' || '' }}

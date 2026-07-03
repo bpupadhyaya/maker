@@ -172,9 +172,13 @@ maker serve --lan --port 5000  # custom port
 
 ## Install
 
-> **Heads up:** signed native installers (`.dmg` / `.msi` / `.AppImage`) don't exist yet — they
-> need code-signing certs + CI. **Until then, the way to install Maker is to clone this repo and
-> run it.** (The code and Tauri packaging are done; only the signed build step is pending.)
+> **Native installers:** the build pipeline is wired — pushing a `v*` tag makes GitHub Actions
+> produce `.dmg` (macOS), `.msi`/`.exe` (Windows), and `.AppImage`/`.deb` (Linux) on this repo's
+> [Releases](https://github.com/bpupadhyaya/maker/releases). The **first releases are unsigned**
+> (a one-time "unidentified developer" prompt you click through); **code-signing is the only paid
+> step** and gets flipped on later without changing the pipeline. See
+> [`docs/RELEASING.md`](docs/RELEASING.md). Until a release is published, install by cloning +
+> running below.
 
 **Requirements:** **Node ≥ 23.6** (Node 26 recommended — it runs the TypeScript sources natively,
 no build step). No other install needed to start.

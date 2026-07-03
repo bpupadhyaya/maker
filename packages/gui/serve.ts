@@ -58,7 +58,9 @@ import {
  * web UI, bridges the conversation to the engine over SSE, and exposes model
  * management as REST. Tauri (G5) is just native packaging on top of this.
  */
-const WEB_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "web");
+// Packaged builds set MAKER_WEB_DIR to the bundled web assets (next to the
+// sidecar binary); from source it resolves relative to this file.
+const WEB_DIR = process.env["MAKER_WEB_DIR"] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "web");
 
 /** Assistant prompt for reading/analyzing content (NOT tool-building). */
 const ASSISTANT_PROMPT =
