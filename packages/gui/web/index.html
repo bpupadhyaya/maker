@@ -48,6 +48,7 @@
       <div id="divider" role="separator" aria-orientation="vertical"></div>
 
       <section id="tool" aria-label="living tool">
+        <div id="tool-label" hidden><span id="tool-label-name"></span><span id="tool-label-model"></span></div>
         <iframe id="toolframe" title="living tool" sandbox="allow-scripts allow-forms"></iframe>
         <div id="tool-empty">Your tool will run here — poke it as it grows.</div>
       </section>
@@ -205,6 +206,7 @@
       <div id="stats-grid" class="stats-grid"></div>
     </aside>
     <div id="scrim" hidden></div>
+    <div id="toast-stack"></div>
 
     <script type="module" src="main.js"></script>
   </body>

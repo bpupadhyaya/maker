@@ -136,11 +136,45 @@ loadTools();
 function renderBrief(brief) {
   briefGoal.textContent = "Goal: " + (brief.goal || "(not set yet)");
   briefOpen.textContent = (brief.open?.length ?? 0) + " open";
+  if (typeof paintToolLabel === "function") paintToolLabel();
 }
 function showTool(url) {
   toolframe.src = url;
   toolEmpty.style.display = "none";
 }
+
+// ---------- toast (transient errors/notices) ----------
+function showToast(msg, kind = "error") {
+  const stack = document.getElementById("toast-stack");
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.textContent = msg;
+  stack.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 220);
+  }, 5000);
+}
+
+// ---------- tool-pane label: tool name + which model is answering ----------
+let currentModelLabel = "";
+async function refreshModelLabel() {
+  try {
+    const m = await (await fetch("/api/models")).json();
+    currentModelLabel = m.active || "no model";
+  } catch { currentModelLabel = ""; }
+  paintToolLabel();
+}
+function paintToolLabel() {
+  const strip = document.getElementById("tool-label");
+  const goal = (briefGoal.textContent || "").replace(/^Goal:\s*/i, "").trim();
+  if (!goal || /^\(?not set/i.test(goal)) { strip.hidden = true; return; }
+  document.getElementById("tool-label-name").textContent = "🔧 " + goal.slice(0, 48);
+  document.getElementById("tool-label-model").textContent = currentModelLabel ? "🧠 " + currentModelLabel : "";
+  strip.hidden = false;
+}
+refreshModelLabel();
 
 // ---------- image attachments (vision) ----------
 let pendingImages = []; // data URIs to send with the next message
@@ -240,13 +274,16 @@ function handleEvent(ev, ensureStream, setStream) {
     case "tool-running":
       showTool(ev.url);
       loadTools(); // a new tool may have earned an id
+      refreshModelLabel();
+      paintToolLabel();
       break;
     case "checks-run":
       if (ev.violations?.length) for (const v of ev.violations) addTurn("error", v);
       else addTurn("ok", "✓ " + (ev.results?.length ?? 0) + " checks passed");
       break;
     case "error":
-      addTurn("error", ev.message);
+      // Transient errors surface as a toast; still logged for the record.
+      showToast(ev.message);
       break;
   }
 }
@@ -390,7 +427,7 @@ $("#composer").addEventListener("submit", (e) => {
   }
   // approvalMode: "ask" confirms before building (interrogate more).
   if (settings.approvalMode === "ask" && !text.startsWith("/") && !confirm("Build: " + text + " ?")) return;
-  express(text).catch((err) => addTurn("error", String(err)));
+  express(text).catch((err) => showToast(String(err)));
 });
 
 // ---------- settings ----------
@@ -723,7 +760,7 @@ async function loadModels() {
     const row = document.createElement("div");
     row.className = "model-row" + (data.active === m.id ? " active" : "");
     row.innerHTML = `<span class="m-name">${m.name}</span><span class="muted">${fmtGB(m.sizeBytes)}</span>`;
-    const use = button(data.active === m.id ? "Active" : "Use", async () => { await post("/api/models/use", { id: m.id }); loadModels(); });
+    const use = button(data.active === m.id ? "Active" : "Use", async () => { await post("/api/models/use", { id: m.id }); loadModels(); refreshModelLabel(); });
     use.disabled = data.active === m.id;
     const rm = button("Remove", async () => { await post("/api/models/remove", { id: m.id }); loadModels(); });
     rm.className = "danger";

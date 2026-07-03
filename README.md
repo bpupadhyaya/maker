@@ -60,6 +60,44 @@ tools together, and runs a local model — all offline. Both front-ends are usab
 and a **terminal (TUI)**. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and the
 short `needs-user` list (signed installers, the compiled Tauri window, real voice/mobile/robots).
 
+## Features
+
+Everything below runs **on your machine, offline, free** (MIT, no accounts, no gating):
+
+- **Multi-tool workshop** — every build is its own tool; a "your tools" dropdown (GUI) /
+  `/tools` `/open` `/new` (TUI) reopen and continue any of them. They don't overwrite each other.
+- **Rewind / undo** — each iteration is snapshotted; `↩ Undo` (GUI) / `/undo` (TUI) walks back
+  through versions, re-running the tool and its checks.
+- **Vision routing** — attach an image and Maker auto-routes that request to an installed vision
+  model (Qwen2.5-VL / Moondream2), while your builder model keeps handling code.
+- **Auto-resume** — your conversation, Brief, and running tool persist per tool and come back on
+  launch. No `--resume` flag; it just continues.
+- **Permission-gated files** — Maker asks before reading or writing a folder (Allow once / Always
+  allow / Deny), exactly like Claude Code; grants are remembered and cover subfolders.
+- **File-change hooks** — register commands that run on changes inside your allowed folders.
+- **Effort control** — low/medium/high maps to real generation params (temperature + length).
+- **Slash-command menu** — type `/` for an autocomplete menu (GUI) or Tab-complete (TUI); ~38
+  commands plus your own macros, `/help` lists them.
+- **One-click models** — download, switch (live hot-swap), and remove local models from the app;
+  `maker doctor` (and `/doctor full`) verify you're offline-ready.
+
+## Maker vs cloud agents (Claude Code / Codex / Claude CLI)
+
+Maker isn't trying to beat frontier cloud agents at raw reasoning — it's a different trade.
+
+**Maker wins where they can't reach:** it runs **100% offline** after the first download, is
+**free** with **no account or API key**, keeps **every keystroke and file on your device**
+(nothing leaves the machine), starts **instantly**, and works on a plane, in a SCIF, or on an
+air-gapped box. It builds a **live, pokeable tool**, not just a diff.
+
+**Cloud agents win** on **frontier reasoning**, **huge context windows**, and **zero local
+setup** — a 70B-class cloud model will out-think a 7B local one on hard, sprawling problems, and
+they need no GPU of yours.
+
+So think of Maker as the **local-first complement**: reach for it when *private, offline, free,
+and instant* matter more than absolute model horsepower — and (optionally, opt-in) let it
+**escalate the genuinely hard prompts to a cloud model you configure** when you want both.
+
 ## Quick start — run the local web app
 
 Maker's GUI runs as a **local web app**: a small Node server on *your* machine, bound to
