@@ -765,8 +765,20 @@ export async function main(): Promise<void> {
     intercept: async (line) => {
       const save = /^\s*(?:please\s+)?save\b(?:\s+(?:the\s+)?(?:project|tool|it|this|files?))?(?:\s+(?:in|to|into|at)\s+(.+?))?\s*$/i.exec(line);
       if (save) {
-        const base = (save[1] ?? "~/Downloads").trim().replace(/\/+$/, "");
-        const goal = maker.brief.goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+        // Strip natural-language noise from the path ("~Downloads folder" → the
+        // word "folder" isn't part of it) and articles ("the Downloads folder").
+        const base = (save[1] ?? "~/Downloads")
+          .trim()
+          .replace(/^(?:the|my)\s+/i, "")
+          .replace(/\s+(?:folder|directory|dir)\s*$/i, "")
+          .replace(/\/+$/, "");
+        const goal = maker.brief.goal
+          .toLowerCase()
+          .replace(/^(?:please\s+)?(?:build|make|create)(?:\s+me)?(?:\s+an?)?\s+/i, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 40)
+          .replace(/-$/, "");
         await cmdSave(`${base}/${goal || "my-tool"}`);
         return true;
       }

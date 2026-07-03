@@ -325,7 +325,7 @@ $("#composer").addEventListener("submit", (e) => {
   // NOT the model (small models just say "I can't access files").
   const save = /^\s*(?:please\s+)?save\b(?:\s+(?:the\s+)?(?:project|tool|it|this|files?))?(?:\s+(?:in|to|into|at)\s+(.+?))?\s*$/i.exec(text);
   if (save && !text.startsWith("/")) {
-    const base = (save[1] || "~/Downloads").trim().replace(/\/+$/, "");
+    const base = cleanFolderPhrase(save[1] || "~/Downloads");
     addTurn("user", text);
     saveTo(`${base}/${toolSlug()}`, false);
     return;
@@ -371,8 +371,16 @@ loadSettings();
 function toolSlug() {
   let goal = ($(".brief-goal")?.textContent || "").replace(/^Goal:\s*/i, "").trim();
   if (/^\(?not set/i.test(goal)) goal = ""; // ignore the "(not set yet)" placeholder
-  const s = goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  const s = goal.toLowerCase()
+    .replace(/^(?:please\s+)?(?:build|make|create)(?:\s+me)?(?:\s+an?)?\s+/i, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40).replace(/-$/, "");
   return s || "my-tool";
+}
+function cleanFolderPhrase(p) {
+  return p.trim()
+    .replace(/^(?:the|my)\s+/i, "")
+    .replace(/\s+(?:folder|directory|dir)\s*$/i, "")
+    .replace(/\/+$/, "");
 }
 // Permission card (Claude-Code-style): Allow once / Always allow <folder> / Deny.
 function showPermissionCard(dir, parent, verbPhrase, onAllow, denyMsg) {
