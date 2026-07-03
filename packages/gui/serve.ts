@@ -18,7 +18,7 @@ import {
   fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
-  grantPath, isGranted,
+  grantPath, isGranted, listGrantedPaths, revokePath,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
@@ -28,6 +28,7 @@ import {
 import type { Settings } from "../store/src/index.ts";
 import type { HookEvent } from "../store/src/index.ts";
 import { ROLES, startersForRoles, orderedStarters } from "../engine/src/index.ts";
+import { runDoctor, formatDoctor } from "../tui/src/doctor.ts";
 import {
   detectHardware,
   selectModel,
@@ -519,6 +520,30 @@ async function handle(
     await grantPath(store, resolveDir(String(body["dir"] ?? "")));
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url === "/api/permissions" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ granted: await listGrantedPaths(store) }));
+    return;
+  }
+  if (url === "/api/permissions/revoke" && method === "POST") {
+    const body = await readJson(req);
+    await revokePath(store, resolveDir(String(body["dir"] ?? "")));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  // Drop the chat transcript (fresh model context); tool/Brief/memory stay.
+  if (url === "/api/clear" && method === "POST") {
+    maker.clearConversation();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url === "/api/doctor" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ text: formatDoctor(await runDoctor()) }));
     return;
   }
 

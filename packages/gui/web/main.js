@@ -182,6 +182,7 @@ function handleEvent(ev, ensureStream, setStream) {
       setStream(null);
       break;
     case "brief-updated":
+      lastBrief = ev.brief;
       renderBrief(ev.brief);
       break;
     case "clarify":
@@ -203,11 +204,120 @@ function handleEvent(ev, ensureStream, setStream) {
   }
 }
 
+// ---------- slash commands + autocomplete (like Claude CLI) ----------
+let lastBrief = null;
+const GUI_COMMANDS = [
+  { name: "/help", args: "", desc: "list all commands", run: () => showHelp() },
+  { name: "/setup", args: "", desc: "download a model (opens Models)", run: () => openPanel() },
+  { name: "/models", args: "", desc: "manage models", run: () => openPanel() },
+  { name: "/save", args: "[folder]", desc: "save the tool's files to a folder", run: (a) => saveTo(a || "~/Downloads/" + toolSlug(), false) },
+  { name: "/read", args: "<folder>", desc: "read + analyze a local folder", run: (a) => a ? readAnalyze(a, "Analyze this folder", false) : addTurn("error", "usage: /read <folder>") },
+  { name: "/allow", args: "<folder>", desc: "allow Maker to read/write a folder", run: async (a) => { if (!a) return addTurn("error", "usage: /allow <folder>"); await post("/api/permissions/grant", { dir: a }); addTurn("ok", "✓ Allowed " + a); } },
+  { name: "/permissions", args: "", desc: "list allowed folders", run: async () => { const g = (await (await fetch("/api/permissions")).json()).granted; addTurn("assistant", g.length ? "Allowed folders:\n" + g.join("\n") : "No folders allowed yet — /allow <folder>."); } },
+  { name: "/clear", args: "", desc: "clear the chat (keeps tool + Brief)", run: async () => { await post("/api/clear", {}); transcript.innerHTML = ""; addTurn("ok", "✓ Cleared — fresh context. Your tool, Brief, and memory are untouched."); } },
+  { name: "/compact", args: "", desc: "free the model's context", run: async () => { await post("/api/clear", {}); addTurn("ok", "✓ Compacted the model's context. Tool, Brief, and memory kept."); } },
+  { name: "/export", args: "", desc: "download the conversation as markdown", run: () => exportTranscript() },
+  { name: "/status", args: "", desc: "model, project, tool, usage", run: () => showStatus() },
+  { name: "/doctor", args: "", desc: "readiness check", run: async () => { addTurn("assistant", "Checking…"); const d = await (await fetch("/api/doctor")).json(); addTurn("assistant", d.text); } },
+  { name: "/todos", args: "", desc: "the Brief's open questions + guesses", run: () => showTodos() },
+  { name: "/cost", args: "", desc: "$0 — it's local", run: async () => { const s = await (await fetch("/api/stats")).json(); addTurn("assistant", `Cost: $0.00 — everything runs on your machine. (${s.sessions} sessions · ${s.toolsBuilt} tools · ~${s.tokens} tokens.)`); } },
+  { name: "/stats", args: "", desc: "usage panel", run: () => openStats() },
+  { name: "/history", args: "", desc: "history & search panel", run: () => openSearch() },
+  { name: "/macros", args: "", desc: "macros panel", run: () => openMacros() },
+  { name: "/schedules", args: "", desc: "schedules panel", run: () => openSched() },
+  { name: "/hooks", args: "", desc: "hooks panel", run: () => openHooks() },
+  { name: "/settings", args: "", desc: "settings panel", run: () => openSettings() },
+  { name: "/image", args: "", desc: "attach an image (or paste/drag one)", run: () => document.getElementById("file-input").click() },
+  { name: "/reset", args: "", desc: "wipe ALL data (asks first)", run: () => $("#reset-all").click() },
+  { name: "/bug", args: "", desc: "report a bug on GitHub", run: () => window.open("https://github.com/bpupadhyaya/maker/issues/new", "_blank") },
+  { name: "/login", args: "", desc: "no accounts — Maker is yours", run: () => addTurn("assistant", "No login needed — Maker has no accounts. It's 100% yours, on your device, offline.") },
+  { name: "/logout", args: "", desc: "nothing to log out of", run: () => addTurn("assistant", "No accounts — nothing to log out of. Everything lives in ~/.maker on your machine.") },
+];
+function showHelp() {
+  addTurn("assistant", "Commands:\n" + GUI_COMMANDS.map((c) => `${c.name} ${c.args}`.trim().padEnd(24) + " " + c.desc).join("\n") + "\n\nAnything else you type builds/iterates your tool. Your macros also work as /name.");
+}
+async function showStatus() {
+  const [m, p, s] = await Promise.all([
+    (await fetch("/api/models")).json(), (await fetch("/api/projects")).json(), (await fetch("/api/stats")).json(),
+  ]);
+  const active = (p.projects || []).find((x) => x.id === p.active);
+  addTurn("assistant",
+    `Model: ${m.active ?? "(none — /setup)"}\nProject: ${active ? active.name : p.active} (${active ? active.toolIds.length : 0} tools)\n` +
+    `Goal: ${(lastBrief && lastBrief.goal) || $(".brief-goal").textContent.replace(/^Goal:\s*/i, "")}\nUsage: ${s.sessions} sessions · ${s.toolsBuilt} tools · ~${s.tokens} tokens (local only)`);
+}
+function showTodos() {
+  if (!lastBrief) { addTurn("assistant", "No Brief yet — describe a tool first."); return; }
+  addTurn("assistant",
+    `Goal: ${lastBrief.goal || "(not set)"}\n\nOpen:\n${(lastBrief.open || []).map((o) => "? " + o).join("\n") || "(none)"}\n\nGuesses:\n${(lastBrief.guesses || []).map((g) => "~ " + g.text).join("\n") || "(none)"}\n\nDecided: ${(lastBrief.decided || []).length} behavior(s).`);
+}
+function exportTranscript() {
+  const text = [...transcript.querySelectorAll(".turn")].map((t) => t.textContent).join("\n\n---\n\n");
+  const blob = new Blob(["# Maker conversation\n\n" + text], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "maker-conversation.md";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  addTurn("ok", "✓ Downloaded maker-conversation.md");
+}
+
+// Autocomplete menu: type "/" to see commands; ↑↓ + Enter/Tab; Esc closes.
+const slashMenu = $("#slash-menu");
+let slashItems = [], slashSel = 0, macroNames = [];
+fetch("/api/macros").then((r) => r.json()).then((d) => { macroNames = (d.macros || []).map((m) => "/" + m.name); }).catch(() => {});
+function slashCandidates(prefix) {
+  const names = GUI_COMMANDS.map((c) => c);
+  const macros = macroNames.map((n) => ({ name: n, args: "", desc: "your macro", run: null }));
+  return [...names, ...macros].filter((c) => c.name.startsWith(prefix));
+}
+function renderSlashMenu() {
+  slashMenu.innerHTML = "";
+  slashItems.forEach((c, i) => {
+    const item = document.createElement("div");
+    item.className = "slash-item" + (i === slashSel ? " selected" : "");
+    item.innerHTML = `<span class="s-name">${c.name}</span><span class="s-args">${c.args}</span><span class="s-desc">${c.desc}</span>`;
+    item.addEventListener("mousedown", (e) => { e.preventDefault(); pickSlash(i); });
+    slashMenu.appendChild(item);
+  });
+  slashMenu.hidden = slashItems.length === 0;
+}
+function closeSlashMenu() { slashMenu.hidden = true; slashItems = []; slashSel = 0; }
+function pickSlash(i) {
+  const c = slashItems[i];
+  if (!c) return;
+  $("#input").value = c.name + (c.args ? " " : "");
+  $("#input").focus();
+  closeSlashMenu();
+}
+$("#input").addEventListener("input", (e) => {
+  const v = e.target.value;
+  if (v.startsWith("/") && !v.includes(" ")) {
+    slashItems = slashCandidates(v);
+    slashSel = 0;
+    renderSlashMenu();
+  } else closeSlashMenu();
+});
+$("#input").addEventListener("keydown", (e) => {
+  if (slashMenu.hidden) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); slashSel = (slashSel + 1) % slashItems.length; renderSlashMenu(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); slashSel = (slashSel - 1 + slashItems.length) % slashItems.length; renderSlashMenu(); }
+  else if (e.key === "Tab") { e.preventDefault(); pickSlash(slashSel); }
+  else if (e.key === "Enter" && slashItems.length && $("#input").value !== slashItems[slashSel].name) { e.preventDefault(); pickSlash(slashSel); }
+  else if (e.key === "Escape") closeSlashMenu();
+});
+
 $("#composer").addEventListener("submit", (e) => {
   e.preventDefault();
+  closeSlashMenu();
   const input = $("#input");
   let text = input.value.trim();
   input.value = "";
+  // Run a known slash command client-side.
+  if (text.startsWith("/")) {
+    const [head, ...rest] = text.split(/\s+/);
+    const cmd = GUI_COMMANDS.find((c) => c.name === head);
+    if (cmd) { addTurn("user", text); cmd.run(rest.join(" ").trim()); return; }
+  }
   // Allow sending just an image (no text) — default to a describe prompt.
   if (!text && pendingImages.length) text = "What's in this image?";
   if (!text) return;
