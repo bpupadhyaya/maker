@@ -276,6 +276,7 @@ export async function startServer(
     store,
     taste: tasteMemory(store),
     registry: toolRegistry(store),
+    multiTool: true,
     onToolBuilt: async (toolId) => {
       lastToolId = toolId;
       const p = await getActiveProject(store);
@@ -544,6 +545,25 @@ async function handle(
   if (url === "/api/doctor" && method === "GET") {
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ text: formatDoctor(await runDoctor()) }));
+    return;
+  }
+  // --- multi-tool workshop (H9.1) ---
+  if (url === "/api/tools" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ tools: await maker.listTools(), current: maker.toolId }));
+    return;
+  }
+  if (url === "/api/tools/open" && method === "POST") {
+    const body = await readJson(req);
+    const ok = await maker.openTool(String(body["id"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok, current: maker.toolId, url: maker.running?.url ?? null, goal: maker.brief.goal }));
+    return;
+  }
+  if (url === "/api/tools/new" && method === "POST") {
+    maker.newTool();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

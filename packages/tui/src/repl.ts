@@ -124,6 +124,7 @@ export async function main(): Promise<void> {
     runtime: localWebRuntime(),
     store,
     taste: tasteMemory(store),
+    multiTool: true,
     onToolBuilt: async (toolId) => {
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
@@ -590,6 +591,25 @@ export async function main(): Promise<void> {
       return "0.0.0";
     }
   }
+  async function cmdTools(): Promise<void> {
+    const tools = await maker.listTools();
+    write("\nYour tools:\n");
+    if (!tools.length) write("  (none yet — describe one to build it)\n");
+    for (const t of tools) write(`  ${t.id === maker.toolId ? "*" : " "} ${t.id} — ${t.goal}\n`);
+    write("\n/open <id> to reopen · /new to start a fresh tool\n");
+  }
+  async function cmdOpen(arg: string): Promise<void> {
+    if (!arg.trim()) { write("usage: /open <id> (see /tools)\n"); return; }
+    const ok = await maker.openTool(arg.trim());
+    if (!ok) { write(`\nNo saved tool "${arg.trim()}". See /tools.\n`); return; }
+    write(`\n✓ Reopened ${maker.toolId} — "${maker.brief.goal}".\n`);
+    if (maker.running) { write(`  Running → ${maker.running.url}\n`); openBrowser(maker.running.url); }
+  }
+  async function cmdNew(): Promise<void> {
+    maker.newTool();
+    write("\n✓ New tool — describe what to build.\n");
+  }
+
   async function cmdStatus(): Promise<void> {
     const active = await getActiveModel();
     const runtimePath = await detectRuntime();
@@ -699,6 +719,9 @@ export async function main(): Promise<void> {
     ["/remove-all", "", "remove all models", cmdRemoveAll],
     ["/reset", "[yes]", "wipe ALL data (models, tools, memory)", cmdReset],
     ["/doctor", "", "readiness check + runtime resolution dry-run", cmdDoctor],
+    ["/tools", "", "list your tools", async () => { await cmdTools(); }],
+    ["/open", "<id>", "reopen a tool (continue iterating)", cmdOpen],
+    ["/new", "", "start a fresh tool", async () => { await cmdNew(); }],
     ["/status", "", "model, runtime, project, tool, goal", async () => { await cmdStatus(); }],
     ["/version", "", "version info", async () => { await cmdVersion(); }],
     ["/clear", "", "clear screen + drop the chat transcript", async () => { await cmdClear(); }],

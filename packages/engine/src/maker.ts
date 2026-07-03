@@ -32,6 +32,8 @@ export interface MakerDeps {
   readonly inference: InferenceBackend;
   readonly runtime: ToolRuntime;
   readonly toolId?: string;
+  /** Multi-tool workshop: each new tool gets its own id from its goal (H9.1). */
+  readonly multiTool?: boolean;
   /** Optional local persistence; when present, Brief + tool survive restarts. */
   readonly store?: MemoryStore;
   /** Optional taste-memory; when present, decisions shrink gap-detection. */
@@ -68,6 +70,14 @@ export interface Maker {
   readonly conversation: readonly { role: string; content: string }[];
   /** Drop the chat transcript (fresh context); the Brief, tool, and checks stay. */
   clearConversation(): void;
+  /** The current tool's id (multi-tool workshop). */
+  readonly toolId: string;
+  /** All tools the user has built: id + goal. */
+  listTools(): Promise<{ id: string; goal: string }[]>;
+  /** Reopen an existing tool: load its Brief + files, run it, continue iterating. */
+  openTool(id: string): Promise<boolean>;
+  /** Start a fresh tool (the next build gets its own id from its goal). */
+  newTool(): void;
 }
 
 /**
@@ -77,7 +87,12 @@ export interface Maker {
  * Still headless: every dependency is an interface.
  */
 export function createMaker(deps: MakerDeps): Maker {
-  const toolId = deps.toolId ?? "tool";
+  // Multi-tool workshop (H9.1): in multiTool mode each new tool gets its own id
+  // (from its goal) so builds don't overwrite each other. Legacy single-tool
+  // mode (a fixed toolId) is the default, unchanged.
+  const multiTool = deps.multiTool ?? false;
+  let toolId = deps.toolId ?? (multiTool ? "untitled" : "tool");
+  let toolNamed = !multiTool; // in multiTool, the id is assigned on first build
   let session = createSession({
     inference: deps.inference,
     systemPrompt: MAKER_SYSTEM_PROMPT,
@@ -90,15 +105,29 @@ export function createMaker(deps: MakerDeps): Maker {
   let contract: ToolContract | undefined;
   const dependencies: string[] = [];
   const depSnapshots: DependencySnapshot[] = [];
-  const checks: Check[] = [smokeCheck()]; // the accumulating regression net
+  let checks: Check[] = [smokeCheck()]; // the accumulating regression net
 
-  const briefKey = `${toolId}:brief`;
-  const filesKey = `${toolId}:files`;
+  const briefKey = (): string => `${toolId}:brief`;
+  const filesKey = (): string => `${toolId}:files`;
 
   async function persist(): Promise<void> {
-    if (!deps.store) return;
-    await deps.store.set(briefKey, brief);
-    if (lastFiles) await deps.store.set(filesKey, lastFiles);
+    if (!deps.store || !toolNamed) return;
+    await deps.store.set(briefKey(), brief);
+    if (lastFiles) await deps.store.set(filesKey(), lastFiles);
+    await deps.store.set("workshop:lastActiveTool", toolId);
+  }
+
+  /** In multiTool mode, assign a fresh unique id from the goal before first build. */
+  async function assignId(goal: string): Promise<void> {
+    if (toolNamed) return;
+    const base = slugName(goal) || "tool";
+    let id = base;
+    if (deps.store) {
+      let n = 1;
+      while ((await deps.store.get(`${id}:brief`)) !== undefined) id = `${base}-${++n}`;
+    }
+    toolId = id;
+    toolNamed = true;
   }
 
   function addChecks(more: readonly Check[]): void {
@@ -160,6 +189,9 @@ export function createMaker(deps: MakerDeps): Maker {
       return;
     }
 
+    // Multi-tool: this real build earns a proper id from the goal.
+    await assignId(brief.goal || request);
+
     // Build the new tool before tearing down the old (always-runnable).
     const built = await deps.runtime.build({ id: toolId, files: meaningful });
     const next = await deps.runtime.run(built);
@@ -212,17 +244,57 @@ export function createMaker(deps: MakerDeps): Maker {
     };
   }
 
-  async function restore(): Promise<boolean> {
+  async function loadTool(id: string): Promise<boolean> {
     if (!deps.store) return false;
-    const savedBrief = await deps.store.get<Brief>(briefKey);
-    const savedFiles = await deps.store.get<Record<string, string>>(filesKey);
-    if (savedBrief) brief = savedBrief;
+    toolId = id;
+    toolNamed = true;
+    const savedBrief = await deps.store.get<Brief>(briefKey());
+    const savedFiles = await deps.store.get<Record<string, string>>(filesKey());
+    brief = savedBrief ?? emptyBrief();
+    gapsChecked = Boolean(savedBrief); // don't re-ask gaps on a reopened tool
+    if (current) await current.stop();
+    current = undefined;
+    lastFiles = undefined;
     if (savedFiles && Object.keys(savedFiles).length > 0) {
       lastFiles = savedFiles;
       const built = await deps.runtime.build({ id: toolId, files: savedFiles });
       current = await deps.runtime.run(built);
     }
     return Boolean(savedBrief) || current !== undefined;
+  }
+
+  async function restore(): Promise<boolean> {
+    if (!deps.store) return false;
+    if (multiTool) {
+      const last = await deps.store.get<string>("workshop:lastActiveTool");
+      if (last) return loadTool(last);
+      return false;
+    }
+    return loadTool(toolId);
+  }
+
+  async function openTool(id: string): Promise<boolean> {
+    await persist();
+    session = createSession({ inference: deps.inference, systemPrompt: MAKER_SYSTEM_PROMPT });
+    checks = [smokeCheck()];
+    contract = undefined;
+    const ok = await loadTool(id);
+    await deps.store?.set("workshop:lastActiveTool", toolId);
+    return ok;
+  }
+
+  function newTool(): void {
+    void persist();
+    toolId = "untitled";
+    toolNamed = false;
+    brief = emptyBrief();
+    gapsChecked = false;
+    lastFiles = undefined;
+    contract = undefined;
+    checks = [smokeCheck()];
+    session = createSession({ inference: deps.inference, systemPrompt: MAKER_SYSTEM_PROMPT });
+    void current?.stop();
+    current = undefined;
   }
 
   return {
@@ -242,6 +314,24 @@ export function createMaker(deps: MakerDeps): Maker {
         systemPrompt: MAKER_SYSTEM_PROMPT,
       });
     },
+    get toolId() {
+      return toolId;
+    },
+    async listTools() {
+      if (!deps.store) return [];
+      const keys = await deps.store.keys();
+      const out: { id: string; goal: string }[] = [];
+      for (const k of keys) {
+        if (!k.endsWith(":brief")) continue;
+        const id = k.slice(0, -":brief".length);
+        if (!id || id.includes(":") || id === "untitled") continue;
+        const b = await deps.store.get<Brief>(k);
+        out.push({ id, goal: b?.goal ?? id });
+      }
+      return out;
+    },
+    openTool,
+    newTool,
     decide,
     handoffBundle,
     exportBundle,

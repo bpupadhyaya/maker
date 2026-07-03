@@ -12,8 +12,10 @@
          panel for download/remove/switch. See DESIGN.md -> "User interface". -->
     <header id="bar">
       <span class="brand">Maker</span>
-      <select id="project-select" title="Project"></select>
-      <button id="project-new" title="New project">＋</button>
+      <select id="tool-select" title="Your tools — pick one to reopen it"></select>
+      <button id="tool-new" title="New tool (start fresh)">＋ New</button>
+      <select id="project-select" title="Project" hidden></select>
+      <button id="project-new" title="New project" hidden>＋</button>
       <div class="presets" role="group" aria-label="layout">
         <button data-preset="talk">Talk</button>
         <button data-preset="split" class="active">Split</button>

@@ -87,6 +87,45 @@ $("#project-new").addEventListener("click", async () => {
   loadProjects();
 });
 loadProjects();
+
+// ---------- multi-tool workshop (reopen / new) ----------
+async function loadTools() {
+  const data = await (await fetch("/api/tools")).json();
+  const sel = $("#tool-select");
+  sel.innerHTML = "";
+  if (!data.tools.length) {
+    const o = document.createElement("option");
+    o.textContent = "My Tools (0)";
+    o.disabled = true;
+    sel.appendChild(o);
+    return;
+  }
+  for (const t of data.tools) {
+    const o = document.createElement("option");
+    o.value = t.id;
+    o.textContent = (t.goal || t.id).slice(0, 40);
+    if (t.id === data.current) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+$("#tool-select").addEventListener("change", async (e) => {
+  const r = await (await post("/api/tools/open", { id: e.target.value })).json();
+  transcript.innerHTML = "";
+  if (r.url) { toolframe.src = r.url; toolEmpty.style.display = "none"; }
+  addTurn("ok", `Reopened "${r.goal || r.current}" — keep iterating, or ＋ New for a fresh tool.`);
+  if (r.goal) briefGoal.textContent = "Goal: " + r.goal;
+});
+$("#tool-new").addEventListener("click", async () => {
+  await post("/api/tools/new", {});
+  transcript.innerHTML = "";
+  toolframe.src = "about:blank";
+  toolEmpty.style.display = "grid";
+  briefGoal.textContent = "Goal: (not set yet)";
+  addTurn("ok", "New tool — describe what to build.");
+  loadTools();
+});
+loadTools();
+
 function renderBrief(brief) {
   briefGoal.textContent = "Goal: " + (brief.goal || "(not set yet)");
   briefOpen.textContent = (brief.open?.length ?? 0) + " open";
@@ -193,6 +232,7 @@ function handleEvent(ev, ensureStream, setStream) {
       break;
     case "tool-running":
       showTool(ev.url);
+      loadTools(); // a new tool may have earned an id
       break;
     case "checks-run":
       if (ev.violations?.length) for (const v of ev.violations) addTurn("error", v);

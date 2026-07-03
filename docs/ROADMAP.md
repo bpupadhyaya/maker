@@ -114,6 +114,21 @@ mobile thin client (H3) — pairing/auth beyond a shared token is the next step 
 open, LAN 401 without token / 200 with (query/cookie/header), `lanAddresses`, `--lan` banner.
 README documents it. Suite 56/56.
 
+## H9 — excellence pass (better than the cloud agents, for its niche)
+
+Goal: offline · instant · private · builds runnable tools — push GUI + TUI past Codex/Claude Code/CLI on that axis. Autonomous /loop.
+
+**Progress:** ✅ H9.1 multi-tool workshop — the biggest flaw fixed: the GUI hardcoded toolId "tool" so every build OVERWROTE the last. Now `createMaker({multiTool:true})` gives each new tool its own id from its goal slug (deduped -2/-3); engine gained `toolId`, `listTools()`, `openTool(id)` (loads brief+files, reruns, continues), `newTool()`; restore-on-launch reopens the last active tool. GUI: a "your tools" dropdown reopens a tool + a "＋ New" button; TUI: `/tools`, `/open <id>`, `/new`. Legacy single-tool mode unchanged (opt-in), suite 56/56. Store: `tools-index.ts` (listSavedTools / last-active).
+
+- ⏭️ H9.2 rewind (/undo + snapshots per ring)
+- ⏭️ H9.3 smart LOCAL routing (image → best vision model)
+- ⏭️ H9.4 runtime controls (TUI /use hot-swap, effort→params, approval-mode)
+- ⏭️ H9.5 conversation persistence (auto-resume)
+- ⏭️ H9.6 file-change watcher + doctor --full
+- ⏭️ H9.7 polish + docs
+- ⏭️ H9.8 **model orchestration** — capability router: pick the best AVAILABLE model per task (vision task → vision model, code → coder). Extends H9.3.
+- ⏭️ H9.9 **optional cloud connect + escalation** — user configures API keys (Claude/OpenAI/Gemini/Grok) locally; off by default; a complexity gauge escalates hard prompts to a configured cloud model. Honors the offline mandate (cloud strictly opt-in/additive).
+
 ## H8 — vision input (read & interpret images, like Claude Code)
 
 Goal: paste/attach an image and Maker reads it. 100% local — the fetched llama.cpp runtime (b9859)

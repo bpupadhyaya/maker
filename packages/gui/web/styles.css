@@ -116,6 +116,8 @@ body {
 
 #project-select { background: var(--panel); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 8px; }
 #project-new { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+#tool-select { background: var(--panel); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 8px; max-width: 220px; }
+#tool-new { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
 #models-btn {
   background: transparent; color: var(--muted);
   border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 10px; cursor: pointer;
