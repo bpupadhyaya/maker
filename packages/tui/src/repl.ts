@@ -1,5 +1,7 @@
 import * as readline from "node:readline";
 import * as fsp from "node:fs/promises";
+import * as path from "node:path";
+import * as os from "node:os";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import {
@@ -20,6 +22,7 @@ import {
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting,
   recordSession, recordToolBuilt, recordTokens, getStats,
+  grantPath, isGranted, listGrantedPaths,
 } from "../../store/src/index.ts";
 import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
@@ -347,6 +350,115 @@ export async function main(): Promise<void> {
     }
   };
 
+  // --- local folder access (permission-gated, like the GUI / Claude Code) ---
+  const ASSISTANT_PROMPT =
+    "You are Maker's assistant. Read, analyze, summarize, and answer questions about " +
+    "the content the user gives you (files, folders, text). Be concise and accurate.";
+  const READ_SKIP = new Set(["node_modules", ".git", ".maker", "dist", "build", ".next", "vendor", "target"]);
+  const resolveDir = (p: string): string => {
+    const home = os.homedir();
+    let d = p.trim();
+    if (d === "~") d = home;
+    else if (d.startsWith("~/")) d = path.join(home, d.slice(2));
+    else if (d.startsWith("~")) d = path.join(home, d.slice(1));
+    return path.resolve(d);
+  };
+  const newestToolDir = async (): Promise<string | undefined> => {
+    const root = path.join(os.homedir(), ".maker", "tools");
+    try {
+      const entries = await fsp.readdir(root, { withFileTypes: true });
+      const dirs: { name: string; mtime: number }[] = [];
+      for (const e of entries) {
+        if (!e.isDirectory()) continue;
+        try {
+          const st = await fsp.stat(path.join(root, e.name, "index.html"));
+          dirs.push({ name: e.name, mtime: st.mtimeMs });
+        } catch { /* not a tool dir */ }
+      }
+      dirs.sort((a, b) => b.mtime - a.mtime);
+      return dirs[0] ? path.join(root, dirs[0].name) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const readFolderTui = async (dir: string): Promise<{ path: string; content: string }[]> => {
+    const out: { path: string; content: string }[] = [];
+    let total = 0;
+    const walk = async (cur: string, rel: string): Promise<void> => {
+      if (out.length >= 25 || total >= 90000) return;
+      let entries: import("node:fs").Dirent[];
+      try { entries = await fsp.readdir(cur, { withFileTypes: true }); } catch { return; }
+      for (const e of entries) {
+        if (out.length >= 25 || total >= 90000) break;
+        if (e.name.startsWith(".") && e.name !== ".gitignore") continue;
+        if (e.isDirectory()) {
+          if (!READ_SKIP.has(e.name)) await walk(path.join(cur, e.name), rel ? `${rel}/${e.name}` : e.name);
+        } else if (e.isFile()) {
+          try {
+            const buf = await fsp.readFile(path.join(cur, e.name));
+            if (buf.includes(0)) continue;
+            const content = buf.toString("utf8").slice(0, 8000);
+            out.push({ path: rel ? `${rel}/${e.name}` : e.name, content });
+            total += content.length;
+          } catch { /* skip */ }
+        }
+      }
+    };
+    const st = await fsp.stat(dir);
+    if (!st.isDirectory()) throw new Error(`${dir} is not a folder`);
+    await walk(dir, "");
+    return out;
+  };
+
+  async function cmdAllow(arg: string): Promise<void> {
+    if (!arg.trim()) {
+      const g = await listGrantedPaths(store);
+      write("\nAllowed folders (read + write, incl. subfolders):\n" + (g.length ? g.map((x) => "  " + x).join("\n") : "  (none)") + "\n");
+      return;
+    }
+    const dir = resolveDir(arg);
+    await grantPath(store, dir);
+    write(`\n✓ Allowed Maker to read/write in ${dir} (and its subfolders).\n`);
+  }
+  async function cmdSave(arg: string): Promise<void> {
+    const dest = arg.trim() ? resolveDir(arg) : path.join(os.homedir(), "Downloads", "maker-tool");
+    if (!(await isGranted(store, dest))) {
+      write(`\n🔒 ${dest} isn't permitted yet.\n  Allow it:  /allow ${path.dirname(dest)}\n  then run:  /save ${arg.trim()}\n`);
+      return;
+    }
+    const src = await newestToolDir();
+    if (!src) { write("\nNo tool built yet — build one first.\n"); return; }
+    await fsp.mkdir(dest, { recursive: true });
+    await fsp.cp(src, dest, { recursive: true });
+    write(`\n✓ Saved your tool to ${dest}\n`);
+  }
+  async function cmdRead(arg: string): Promise<void> {
+    if (!arg.trim()) { write("usage: /read <folder>\n"); return; }
+    const dir = resolveDir(arg);
+    if (!(await isGranted(store, dir))) {
+      write(`\n🔒 ${dir} isn't permitted.\n  Allow it:  /allow ${dir}\n  then run:  /read ${arg.trim()}\n  (Or paste the content here to analyze it directly.)\n`);
+      return;
+    }
+    let files: { path: string; content: string }[];
+    try { files = await readFolderTui(dir); } catch (e) { write(`\n✗ Couldn't read ${dir}: ${String(e)}\n`); return; }
+    if (!files.length) { write(`\n${dir} has no readable text files.\n`); return; }
+    write(`\nRead ${files.length} file(s) from ${dir}. Analyzing…\n\n`);
+    const ctx = files.map((f) => `--- ${f.path} ---\n${f.content}`).join("\n\n");
+    try {
+      for await (const chunk of inference.generate({
+        messages: [
+          { role: "system", content: ASSISTANT_PROMPT },
+          { role: "user", content: `Analyze these files from ${dir}:\n\n${ctx}` },
+        ],
+      })) {
+        write(chunk);
+      }
+    } catch (e) {
+      write(`\n✗ ${String(e)}\n`);
+    }
+    write("\n");
+  }
+
   // Vision (H8.6): /image attaches an image to the next message.
   let pendingImages: string[] = [];
   async function cmdImage(arg: string): Promise<void> {
@@ -495,6 +607,9 @@ export async function main(): Promise<void> {
       "/stats": cmdStats,
       "/doctor": cmdDoctor,
       "/image": cmdImage,
+      "/allow": cmdAllow,
+      "/save": cmdSave,
+      "/read": cmdRead,
     },
     resolveMacro: (name) => resolveMacro(store, name),
     onRequest: (line) => {
