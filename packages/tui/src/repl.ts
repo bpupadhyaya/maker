@@ -22,7 +22,7 @@ import {
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting,
   recordSession, recordToolBuilt, recordTokens, getStats,
-  grantPath, isGranted, listGrantedPaths,
+  grantPath, isGranted, listGrantedPaths, revokePath,
 } from "../../store/src/index.ts";
 import type { Settings } from "../../store/src/index.ts";
 import type { HookEvent } from "../../store/src/index.ts";
@@ -44,6 +44,8 @@ import {
   resetMakerData,
   startModelRuntime,
   provisionModelAndRuntime,
+  detectRuntime,
+  checkProvisioned,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -137,7 +139,7 @@ export async function main(): Promise<void> {
   };
 
   process.stdout.write(
-    `Maker — terminal (v1), backend=${backendName}. Describe a tool; /setup to install your model; /exit to quit.\n`,
+    `Maker — terminal (v1), backend=${backendName}. Describe a tool; /help for all commands (Tab completes); /exit to quit.\n`,
   );
 
   // Auto-choose how to fetch + run the model (default GGUF/llama.cpp = only-network;
@@ -577,40 +579,184 @@ export async function main(): Promise<void> {
     write("\n");
   }
 
+  // --- Claude-CLI-style utility commands ---
+  async function appVersion(): Promise<string> {
+    try {
+      const pkg = JSON.parse(await fsp.readFile(new URL("../../../package.json", import.meta.url), "utf8")) as { version?: string };
+      return pkg.version ?? "0.0.0";
+    } catch {
+      return "0.0.0";
+    }
+  }
+  async function cmdStatus(): Promise<void> {
+    const active = await getActiveModel();
+    const runtimePath = await detectRuntime();
+    const prov = await checkProvisioned();
+    const proj = await getActiveProject(store);
+    write("\nMaker status\n");
+    write(`  version      ${await appVersion()}\n`);
+    write(`  platform     ${process.platform}-${process.arch} (node v${process.versions.node})\n`);
+    write(`  backend      ${backendName}${modelRuntimeStop ? " (turnkey llama.cpp running)" : ""}\n`);
+    write(`  model        ${active ?? "(none — /setup)"}\n`);
+    write(`  runtime      ${runtimePath ?? "(not fetched)"}\n`);
+    write(`  provisioned  ${prov.ready ? "READY — offline-capable" : prov.detail}\n`);
+    write(`  project      ${proj.name} (${proj.toolIds.length} tools)\n`);
+    write(`  tool         ${maker.running ? `running → ${maker.running.url}` : "(none yet)"}\n`);
+    write(`  goal         ${maker.brief.goal || "(not set)"}\n`);
+  }
+  async function cmdClear(): Promise<void> {
+    maker.clearConversation();
+    write("\x1b[2J\x1b[H"); // clear screen + home
+    write("Cleared the conversation (fresh context). Your tool, Brief, and memory are untouched.\n");
+  }
+  async function cmdCompact(): Promise<void> {
+    const turns = maker.conversation.length;
+    maker.clearConversation();
+    write(`\n✓ Compacted: dropped ${turns} transcript message(s) to free the model's context.\n  Kept: your running tool, the Brief (decisions/checks), and memory.\n`);
+  }
+  async function cmdExport(arg: string): Promise<void> {
+    const dest = arg.trim() ? resolveDir(arg) : path.join(os.homedir(), "Downloads", "maker-conversation.md");
+    const destDir = path.dirname(dest);
+    if (!(await isGranted(store, destDir))) {
+      write(`\n🔒 ${destDir} isn't permitted.\n  Allow it:  /allow ${destDir}\n  then run:  /export ${arg.trim()}\n`);
+      return;
+    }
+    const md = maker.conversation
+      .filter((m) => m.role !== "system")
+      .map((m) => `**${m.role}:**\n\n${m.content}`)
+      .join("\n\n---\n\n");
+    await fsp.mkdir(destDir, { recursive: true });
+    await fsp.writeFile(dest, `# Maker conversation\n\n${md || "(empty)"}\n`);
+    write(`\n✓ Exported the conversation to ${dest}\n`);
+  }
+  async function cmdCost(): Promise<void> {
+    const s = await getStats(store);
+    write("\nCost: $0.00 — everything runs on your machine. No account, no subscription, no per-token billing.\n");
+    write(`(Local usage so far: ${s.sessions} sessions · ${s.toolsBuilt} tools built · ~${s.tokens} tokens — see /stats.)\n`);
+  }
+  async function cmdMemoryCmd(): Promise<void> {
+    const roles = await getRoles(store);
+    const projects = await listProjects(store);
+    const macros = await listMacros(store);
+    const granted = await listGrantedPaths(store);
+    const { prompts, tools } = await historyOverview(store);
+    write("\nWhat Maker remembers (all local, in ~/.maker):\n");
+    write(`  roles        ${roles.length ? roles.join(", ") : "(none — /role)"}\n`);
+    write(`  projects     ${projects.length} (${projects.map((p) => p.name).join(", ") || "none"})\n`);
+    write(`  tools        ${tools.length}\n`);
+    write(`  macros       ${macros.length}${macros.length ? " (" + macros.map((m) => "/" + m.name).join(" ") + ")" : ""}\n`);
+    write(`  requests     ${prompts.length} remembered (searchable via /search)\n`);
+    write(`  permissions  ${granted.length} allowed folder(s) (see /permissions)\n`);
+    write("Wipe everything with /reset yes.\n");
+  }
+  async function cmdPermissions(arg: string): Promise<void> {
+    const [sub, ...rest] = arg.split(/\s+/);
+    if (sub === "revoke" && rest.length) {
+      const dir = resolveDir(rest.join(" "));
+      await revokePath(store, dir);
+      write(`\n✓ Revoked ${dir}. Maker will ask (or need /allow) before touching it again.\n`);
+      return;
+    }
+    const granted = await listGrantedPaths(store);
+    write("\nAllowed folders (read + write, incl. subfolders):\n");
+    write(granted.length ? granted.map((g) => "  " + g).join("\n") + "\n" : "  (none)\n");
+    write("\n/allow <folder> to grant · /permissions revoke <folder> to revoke\n");
+  }
+  async function cmdTodos(): Promise<void> {
+    const b = maker.brief;
+    write(`\nGoal: ${b.goal || "(not set)"}\n`);
+    write("\nOpen questions:\n");
+    write(b.open.length ? b.open.map((o) => "  ? " + o).join("\n") + "\n" : "  (none)\n");
+    write("\nLabeled guesses (correct me by talking):\n");
+    write(b.guesses.length ? b.guesses.map((g) => `  ~ ${g.text}`).join("\n") + "\n" : "  (none)\n");
+    write(`\nDecided: ${b.decided.length} committed behavior(s) (the regression net).\n`);
+  }
+  async function cmdBug(): Promise<void> {
+    const url = "https://github.com/bpupadhyaya/maker/issues/new";
+    write(`\nReport a bug: ${url}\n(Opening in your browser…)\n`);
+    openBrowser(url);
+  }
+  async function cmdVersion(): Promise<void> {
+    write(`\nMaker v${await appVersion()} — 100% on-device, offline-capable, MIT.\n`);
+  }
+  async function cmdLogin(): Promise<void> {
+    write("\nNo login needed — Maker has no accounts. It's 100% yours, on your device, offline.\n");
+  }
+  async function cmdResume(): Promise<void> {
+    write("\nMaker resumes automatically: your tool, Brief, and memory persist in ~/.maker and were restored at launch.\n");
+    write(maker.running ? `Your tool is running → ${maker.running.url}\n` : "No tool running yet — describe one to build it.\n");
+  }
+
+  // Command registry — drives the command map, /help, and tab-completion.
+  const REGISTRY: [name: string, args: string, desc: string, fn: (arg: string) => Promise<void> | void][] = [
+    ["/help", "", "list all commands", async () => { await cmdHelp(); }],
+    ["/setup", "", "download your model + runtime (the one online step)", setup],
+    ["/models", "", "list installed + available models", cmdModels],
+    ["/use", "<id>", "switch the active model", cmdUse],
+    ["/remove", "<id>", "remove a model to free space", cmdRemove],
+    ["/remove-all", "", "remove all models", cmdRemoveAll],
+    ["/reset", "[yes]", "wipe ALL data (models, tools, memory)", cmdReset],
+    ["/doctor", "", "readiness check + runtime resolution dry-run", cmdDoctor],
+    ["/status", "", "model, runtime, project, tool, goal", async () => { await cmdStatus(); }],
+    ["/version", "", "version info", async () => { await cmdVersion(); }],
+    ["/clear", "", "clear screen + drop the chat transcript", async () => { await cmdClear(); }],
+    ["/compact", "", "free the model's context (keeps tool + Brief)", async () => { await cmdCompact(); }],
+    ["/export", "[file]", "export the conversation to a markdown file", cmdExport],
+    ["/cost", "", "what this costs ($0 — it's local)", async () => { await cmdCost(); }],
+    ["/memory", "", "what Maker remembers about you", async () => { await cmdMemoryCmd(); }],
+    ["/permissions", "[revoke <dir>]", "list/revoke allowed folders", cmdPermissions],
+    ["/allow", "<folder>", "allow Maker to read/write a folder", cmdAllow],
+    ["/save", "[folder]", "save the current tool's files to a folder", cmdSave],
+    ["/read", "<folder>", "read + analyze a local folder", cmdRead],
+    ["/image", "<path>", "attach an image to your next message (vision)", cmdImage],
+    ["/todos", "", "the Brief's open questions + guesses", async () => { await cmdTodos(); }],
+    ["/role", "[ids…]", "what you make things for (personalizes starters)", cmdRole],
+    ["/starters", "", "list quick-start templates", async () => { await cmdStarters(); }],
+    ["/starter", "<id>", "build a starter template", cmdStarter],
+    ["/project", "[new|use …]", "projects: list, create, switch", cmdProject],
+    ["/macro", "[add|remove …]", "custom /commands (shortcuts)", cmdMacro],
+    ["/schedule", "[add|remove …]", "run a prompt on a cadence (offline routines)", cmdSchedule],
+    ["/hook", "[add|remove …]", "run a command on events (tool-built, …)", cmdHook],
+    ["/history", "", "recent requests + built tools", async () => { await cmdHistory(); }],
+    ["/search", "<query>", "search your requests + tools", cmdSearch],
+    ["/settings", "", "show settings", async () => { await cmdSettings(); }],
+    ["/set", "<key> <value>", "change a setting (model/effort/theme/approvalMode)", cmdSet],
+    ["/stats", "", "local usage stats (private)", async () => { await cmdStats(); }],
+    ["/resume", "", "how resuming works (it's automatic)", async () => { await cmdResume(); }],
+    ["/bug", "", "report a bug (opens GitHub issues)", async () => { await cmdBug(); }],
+    ["/login", "", "no accounts — Maker is yours", async () => { await cmdLogin(); }],
+    ["/logout", "", "no accounts — nothing to log out of", async () => { await cmdLogin(); }],
+    ["/exit", "", "quit (also /quit)", () => { /* handled by the controller */ }],
+  ];
+  async function cmdHelp(): Promise<void> {
+    write("\nMaker commands:\n");
+    for (const [name, args, desc] of REGISTRY) {
+      write(`  ${(name + (args ? " " + args : "")).padEnd(28)} ${desc}\n`);
+    }
+    const macros = await listMacros(store);
+    if (macros.length) write("\nYour macros: " + macros.map((m) => "/" + m.name).join(" ") + "\n");
+    write("\nAnything else you type = a request to build/iterate your tool. Tab completes /commands.\n");
+  }
+  const commandMap: Record<string, (arg: string) => Promise<void> | void> = {};
+  for (const [name, , , fn] of REGISTRY) commandMap[name] = fn;
+
   // Create the readline interface only now — after all async setup — so piped
-  // input isn't emitted and lost before we start consuming it.
+  // input isn't emitted and lost before we start consuming it. Tab completes
+  // /commands (like Claude CLI's slash menu).
+  const commandNames = REGISTRY.map(([n]) => n);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    completer: (line: string): [string[], string] => {
+      if (!line.startsWith("/")) return [[], line];
+      const hits = commandNames.filter((c) => c.startsWith(line));
+      return [hits.length ? hits : commandNames, line];
+    },
   });
   const io = { input: rl, write };
   await runMakerConversation(maker, io, {
     prompt: "\n» ",
-    commands: {
-      "/setup": setup,
-      "/models": cmdModels,
-      "/use": cmdUse,
-      "/remove": cmdRemove,
-      "/remove-all": cmdRemoveAll,
-      "/reset": cmdReset,
-      "/role": cmdRole,
-      "/starters": cmdStarters,
-      "/starter": cmdStarter,
-      "/project": cmdProject,
-      "/macro": cmdMacro,
-      "/schedule": cmdSchedule,
-      "/hook": cmdHook,
-      "/history": cmdHistory,
-      "/search": cmdSearch,
-      "/settings": cmdSettings,
-      "/set": cmdSet,
-      "/stats": cmdStats,
-      "/doctor": cmdDoctor,
-      "/image": cmdImage,
-      "/allow": cmdAllow,
-      "/save": cmdSave,
-      "/read": cmdRead,
-    },
+    commands: commandMap,
     resolveMacro: (name) => resolveMacro(store, name),
     onRequest: (line) => {
       void recordPrompt(store, line);

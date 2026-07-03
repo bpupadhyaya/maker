@@ -64,6 +64,10 @@ export interface Maker {
   verifyComposition(): Promise<string[]>;
   restore(): Promise<boolean>;
   stop(): Promise<void>;
+  /** The conversation so far (for /export, /status). */
+  readonly conversation: readonly { role: string; content: string }[];
+  /** Drop the chat transcript (fresh context); the Brief, tool, and checks stay. */
+  clearConversation(): void;
 }
 
 /**
@@ -74,7 +78,7 @@ export interface Maker {
  */
 export function createMaker(deps: MakerDeps): Maker {
   const toolId = deps.toolId ?? "tool";
-  const session = createSession({
+  let session = createSession({
     inference: deps.inference,
     systemPrompt: MAKER_SYSTEM_PROMPT,
   });
@@ -228,6 +232,15 @@ export function createMaker(deps: MakerDeps): Maker {
     },
     get brief() {
       return brief;
+    },
+    get conversation() {
+      return session.history;
+    },
+    clearConversation() {
+      session = createSession({
+        inference: deps.inference,
+        systemPrompt: MAKER_SYSTEM_PROMPT,
+      });
     },
     decide,
     handoffBundle,
