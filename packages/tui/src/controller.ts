@@ -25,6 +25,9 @@ export interface RunOptions {
   readonly resolveMacro?: (name: string) => Promise<string | undefined>;
   /** Called with each expressed line (after macro expansion) — e.g. to record history. */
   readonly onRequest?: (line: string) => void;
+  /** Intercept a natural-language line (e.g. "save the project in ~/Downloads")
+   *  before it reaches the model. Return true if fully handled. */
+  readonly intercept?: (line: string) => Promise<boolean>;
 }
 
 /**
@@ -50,6 +53,8 @@ async function drive(
     const command = commands[head];
     if (command) {
       await command(parts.slice(1).join(" "));
+    } else if (trimmed !== "" && opts.intercept && (await opts.intercept(trimmed))) {
+      // handled without the model (e.g. a permission-gated file operation)
     } else if (trimmed !== "") {
       // A typed /name that isn't a built-in may be a custom macro → expand it.
       let toExpress = trimmed;

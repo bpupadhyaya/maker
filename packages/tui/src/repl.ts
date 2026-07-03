@@ -154,8 +154,10 @@ export async function main(): Promise<void> {
   const runtimeKind = chooseBackendKind(hw, preferOllama ? { prefer: "ollama" } : {});
   const model = selectModel(hw);
 
-  // First-run: if the model isn't set up yet, guide (don't demand shell commands).
-  if (!(await installer.isInstalled(model))) {
+  // First-run: if NO model is set up yet, guide (don't demand shell commands).
+  // Skip when a model is already active/running — the tier default not being
+  // installed doesn't matter then.
+  if (!modelRuntimeStop && !active && !(await installer.isInstalled(model))) {
     write(
       `\nHeads up: your local model (${model.name}) isn't set up yet. ` +
         `Type /setup and Maker will get it for you (via ${kind}, runtime ${runtimeKind}; one step, needs internet once).\n`,
@@ -758,6 +760,24 @@ export async function main(): Promise<void> {
     prompt: "\n» ",
     commands: commandMap,
     resolveMacro: (name) => resolveMacro(store, name),
+    // Natural-language file ops go to the REAL permission-gated commands, not the
+    // model (small models just hallucinate "it's saved in Downloads").
+    intercept: async (line) => {
+      const save = /^\s*(?:please\s+)?save\b(?:\s+(?:the\s+)?(?:project|tool|it|this|files?))?(?:\s+(?:in|to|into|at)\s+(.+?))?\s*$/i.exec(line);
+      if (save) {
+        const base = (save[1] ?? "~/Downloads").trim().replace(/\/+$/, "");
+        const goal = maker.brief.goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+        await cmdSave(`${base}/${goal || "my-tool"}`);
+        return true;
+      }
+      const readCmd = /^\s*(?:please\s+)?(?:can you\s+)?(?:read|analy[sz]e|review|summari[sz]e|inspect|explain|look (?:at|through)|go through)\b/i.test(line);
+      const pathTok = line.match(/(?:^|\s)(~[^\s]+|\/[^\s]+)/);
+      if (readCmd && pathTok) {
+        await cmdRead(pathTok[1] ?? "");
+        return true;
+      }
+      return false;
+    },
     onRequest: (line) => {
       void recordPrompt(store, line);
       void recordTokens(store, Math.ceil(line.length / 4));
