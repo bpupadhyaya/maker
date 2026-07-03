@@ -33,8 +33,12 @@ export function localWebRuntime(opts: LocalWebRuntimeOptions = {}): ToolRuntime 
   return {
     async build(spec: ToolSpec): Promise<BuiltTool> {
       const dir = path.join(rootDir, spec.id);
-      await fs.rm(dir, { recursive: true, force: true });
+      // Clear the tool dir but PRESERVE .rings (rewind snapshots must survive a rebuild).
       await fs.mkdir(dir, { recursive: true });
+      for (const e of await fs.readdir(dir).catch(() => [])) {
+        if (e === ".rings") continue;
+        await fs.rm(path.join(dir, e), { recursive: true, force: true });
+      }
 
       for (const [rel, content] of Object.entries(spec.files)) {
         const target = safeJoin(dir, rel);
@@ -61,7 +65,72 @@ export function localWebRuntime(opts: LocalWebRuntimeOptions = {}): ToolRuntime 
           ),
       };
     },
+
+    // --- Rewind (H9.2): ring snapshots under <tool>/.rings/<n>/ ---
+    async snapshot(id: string): Promise<void> {
+      const dir = path.join(rootDir, id);
+      const files = await readToolFiles(dir);
+      if (Object.keys(files).length === 0) return; // nothing to snapshot yet
+      const rings = await ringNumbers(dir);
+      const n = (rings[rings.length - 1] ?? 0) + 1;
+      const ringDir = path.join(dir, ".rings", String(n));
+      await fs.mkdir(ringDir, { recursive: true });
+      for (const [rel, content] of Object.entries(files)) {
+        const target = safeJoin(ringDir, rel);
+        await fs.mkdir(path.dirname(target), { recursive: true });
+        await fs.writeFile(target, content, "utf8");
+      }
+      // Prune to the last RING_CAP.
+      const all = await ringNumbers(dir);
+      for (const old of all.slice(0, Math.max(0, all.length - RING_CAP))) {
+        await fs.rm(path.join(dir, ".rings", String(old)), { recursive: true, force: true });
+      }
+    },
+    async listRings(id: string): Promise<number[]> {
+      return ringNumbers(path.join(rootDir, id));
+    },
+    async restoreRing(id: string, n: number): Promise<Record<string, string> | undefined> {
+      const ringDir = path.join(rootDir, id, ".rings", String(n));
+      const files = await readToolFiles(ringDir);
+      return Object.keys(files).length ? files : undefined;
+    },
+    async dropRing(id: string, n: number): Promise<void> {
+      await fs.rm(path.join(rootDir, id, ".rings", String(n)), { recursive: true, force: true });
+    },
   };
+}
+
+const RING_CAP = 20;
+
+/** Read a tool dir's files into a {relPath: content} map, skipping .rings. */
+async function readToolFiles(dir: string): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  async function walk(cur: string, rel: string): Promise<void> {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await fs.readdir(cur, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name === ".rings") continue;
+      const abs = path.join(cur, e.name);
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) await walk(abs, r);
+      else if (e.isFile()) out[r] = await fs.readFile(abs, "utf8");
+    }
+  }
+  await walk(dir, "");
+  return out;
+}
+
+async function ringNumbers(dir: string): Promise<number[]> {
+  try {
+    const names = await fs.readdir(path.join(dir, ".rings"));
+    return names.map((n) => Number(n)).filter((n) => Number.isInteger(n)).sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
 }
 
 /** Resolve `rel` under `dir`, throwing if it would escape the tool directory. */

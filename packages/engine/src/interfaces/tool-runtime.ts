@@ -31,4 +31,12 @@ export interface RunningTool {
 export interface ToolRuntime {
   build(spec: ToolSpec): Promise<BuiltTool>;
   run(tool: BuiltTool): Promise<RunningTool>;
+  /** Rewind (H9.2): snapshot the tool's current files into a ring before a rebuild. */
+  snapshot?(id: string): Promise<void>;
+  /** Ring numbers on disk, ascending (oldest → newest). */
+  listRings?(id: string): Promise<number[]>;
+  /** Restore a ring's files back into the tool dir; returns the files. */
+  restoreRing?(id: string, n: number): Promise<Record<string, string> | undefined>;
+  /** Drop a ring after it's been consumed by undo. */
+  dropRing?(id: string, n: number): Promise<void>;
 }

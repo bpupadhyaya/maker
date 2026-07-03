@@ -115,6 +115,13 @@ $("#tool-select").addEventListener("change", async (e) => {
   addTurn("ok", `Reopened "${r.goal || r.current}" — keep iterating, or ＋ New for a fresh tool.`);
   if (r.goal) briefGoal.textContent = "Goal: " + r.goal;
 });
+$("#undo-btn").addEventListener("click", async () => {
+  const r = await (await post("/api/undo", {})).json();
+  if (r.undone) {
+    if (r.url) { toolframe.src = r.url + "?t=" + Date.now(); toolEmpty.style.display = "none"; }
+    addTurn("ok", "↩ Undone — restored the previous version.");
+  } else addTurn("assistant", "Nothing to undo — this is the earliest version.");
+});
 $("#tool-new").addEventListener("click", async () => {
   await post("/api/tools/new", {});
   transcript.innerHTML = "";
@@ -259,6 +266,9 @@ const GUI_COMMANDS = [
   { name: "/export", args: "", desc: "download the conversation as markdown", run: () => exportTranscript() },
   { name: "/status", args: "", desc: "model, project, tool, usage", run: () => showStatus() },
   { name: "/doctor", args: "", desc: "readiness check", run: async () => { addTurn("assistant", "Checking…"); const d = await (await fetch("/api/doctor")).json(); addTurn("assistant", d.text); } },
+  { name: "/undo", args: "", desc: "rewind the last change", run: () => $("#undo-btn").click() },
+  { name: "/tools", args: "", desc: "your tools (dropdown)", run: () => addTurn("assistant", "Use the tools dropdown (top-left) to reopen a tool, or ＋ New for a fresh one.") },
+  { name: "/new", args: "", desc: "start a fresh tool", run: () => $("#tool-new").click() },
   { name: "/todos", args: "", desc: "the Brief's open questions + guesses", run: () => showTodos() },
   { name: "/cost", args: "", desc: "$0 — it's local", run: async () => { const s = await (await fetch("/api/stats")).json(); addTurn("assistant", `Cost: $0.00 — everything runs on your machine. (${s.sessions} sessions · ${s.toolsBuilt} tools · ~${s.tokens} tokens.)`); } },
   { name: "/stats", args: "", desc: "usage panel", run: () => openStats() },

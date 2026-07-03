@@ -609,6 +609,15 @@ export async function main(): Promise<void> {
     maker.newTool();
     write("\n✓ New tool — describe what to build.\n");
   }
+  async function cmdUndo(): Promise<void> {
+    const r = await maker.undo();
+    if (r.undone) {
+      write("\n↩ Undone — restored the previous version.\n");
+      if (maker.running) write(`  Running → ${maker.running.url}\n`);
+    } else {
+      write("\nNothing to undo — this is the earliest version.\n");
+    }
+  }
 
   async function cmdStatus(): Promise<void> {
     const active = await getActiveModel();
@@ -722,6 +731,7 @@ export async function main(): Promise<void> {
     ["/tools", "", "list your tools", async () => { await cmdTools(); }],
     ["/open", "<id>", "reopen a tool (continue iterating)", cmdOpen],
     ["/new", "", "start a fresh tool", async () => { await cmdNew(); }],
+    ["/undo", "", "rewind the last change to your tool", async () => { await cmdUndo(); }],
     ["/status", "", "model, runtime, project, tool, goal", async () => { await cmdStatus(); }],
     ["/version", "", "version info", async () => { await cmdVersion(); }],
     ["/clear", "", "clear screen + drop the chat transcript", async () => { await cmdClear(); }],

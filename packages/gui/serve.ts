@@ -566,6 +566,12 @@ async function handle(
     res.end(JSON.stringify({ ok: true }));
     return;
   }
+  if (url === "/api/undo" && method === "POST") {
+    const r = await maker.undo();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ...r, url: maker.running?.url ?? null }));
+    return;
+  }
 
   // --- read a local folder (with permission), for analysis ---
   if (url === "/api/read" && method === "POST") {

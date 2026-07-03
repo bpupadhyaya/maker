@@ -78,6 +78,8 @@ export interface Maker {
   openTool(id: string): Promise<boolean>;
   /** Start a fresh tool (the next build gets its own id from its goal). */
   newTool(): void;
+  /** Rewind one ring: restore the tool's previous state and rerun it (H9.2). */
+  undo(): Promise<{ undone: boolean; ring?: number }>;
 }
 
 /**
@@ -192,6 +194,9 @@ export function createMaker(deps: MakerDeps): Maker {
     // Multi-tool: this real build earns a proper id from the goal.
     await assignId(brief.goal || request);
 
+    // Rewind (H9.2): snapshot the current tool before it's overwritten.
+    await deps.runtime.snapshot?.(toolId);
+
     // Build the new tool before tearing down the old (always-runnable).
     const built = await deps.runtime.build({ id: toolId, files: meaningful });
     const next = await deps.runtime.run(built);
@@ -283,6 +288,24 @@ export function createMaker(deps: MakerDeps): Maker {
     return ok;
   }
 
+  /** Rewind (H9.2): restore the previous ring, rebuild+rerun, re-run checks. */
+  async function undo(): Promise<{ undone: boolean; ring?: number }> {
+    if (!deps.runtime.listRings || !deps.runtime.restoreRing) return { undone: false };
+    const rings = await deps.runtime.listRings(toolId);
+    const n = rings[rings.length - 1];
+    if (n === undefined) return { undone: false };
+    const files = await deps.runtime.restoreRing(toolId, n);
+    if (!files || !files["index.html"]) return { undone: false };
+    const built = await deps.runtime.build({ id: toolId, files });
+    const next = await deps.runtime.run(built);
+    if (current) await current.stop();
+    current = next;
+    lastFiles = files;
+    await deps.runtime.dropRing?.(toolId, n); // consume it
+    await persist();
+    return { undone: true, ring: n };
+  }
+
   function newTool(): void {
     void persist();
     toolId = "untitled";
@@ -332,6 +355,7 @@ export function createMaker(deps: MakerDeps): Maker {
     },
     openTool,
     newTool,
+    undo,
     decide,
     handoffBundle,
     exportBundle,
