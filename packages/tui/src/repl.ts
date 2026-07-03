@@ -18,7 +18,7 @@ import {
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
-  addHook, listHooks, removeHook, runHooks,
+  addHook, listHooks, removeHook, runHooks, startWatcher,
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
@@ -306,6 +306,8 @@ export async function main(): Promise<void> {
 
   // Local scheduling (H5.5): run due schedules while the TUI is open.
   const scheduleRunner = startScheduleRunner(maker, store);
+  // File-change watcher (H9.6): fire 'file-change' hooks on granted folders.
+  const watcher = await startWatcher(store);
   async function cmdSchedule(arg: string): Promise<void> {
     const parts = arg.split(/\s+/);
     const sub = parts[0];
@@ -499,9 +501,12 @@ export async function main(): Promise<void> {
     }
   }
 
-  async function cmdDoctor(): Promise<void> {
-    write("\nChecking… (this pings GitHub to resolve the runtime; no big download)\n");
-    write(formatDoctor(await runDoctor()));
+  async function cmdDoctor(arg: string): Promise<void> {
+    const full = /\bfull\b/i.test(arg);
+    write(full
+      ? "\nChecking… (--full: this will DOWNLOAD + extract the ~11MB runtime)\n"
+      : "\nChecking… (this pings GitHub to resolve the runtime; no big download)\n");
+    write(formatDoctor(await runDoctor(full ? { full: true } : {})));
   }
 
   async function cmdStats(): Promise<void> {
@@ -743,7 +748,7 @@ export async function main(): Promise<void> {
     ["/remove", "<id>", "remove a model to free space", cmdRemove],
     ["/remove-all", "", "remove all models", cmdRemoveAll],
     ["/reset", "[yes]", "wipe ALL data (models, tools, memory)", cmdReset],
-    ["/doctor", "", "readiness check + runtime resolution dry-run", cmdDoctor],
+    ["/doctor", "[full]", "readiness check (full = really download the runtime)", cmdDoctor],
     ["/tools", "", "list your tools", async () => { await cmdTools(); }],
     ["/open", "<id>", "reopen a tool (continue iterating)", cmdOpen],
     ["/new", "", "start a fresh tool", async () => { await cmdNew(); }],
@@ -851,6 +856,7 @@ export async function main(): Promise<void> {
     return imgs;
   });
   scheduleRunner.stop();
+  watcher.stop();
   modelRuntimeStop?.();
   await maker.stop();
   rl.close();

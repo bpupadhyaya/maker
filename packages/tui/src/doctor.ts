@@ -10,6 +10,7 @@ import {
   listInstalledModels,
   getActiveModel,
   modelsDir,
+  ensureRuntime as realEnsureRuntime,
 } from "../../provision/src/index.ts";
 import type { ProvisionCheck } from "../../provision/src/index.ts";
 import * as fs from "node:fs/promises";
@@ -35,6 +36,9 @@ export interface DoctorReport {
   reachable?: boolean;
   sizeBytes?: number;
   resolveError?: string;
+  /** --full: the actually-downloaded runtime binary path (or a skip reason). */
+  fullRuntimePath?: string;
+  fullError?: string;
 }
 
 type JsonFetch = (url: string) => Promise<{ ok: boolean; status: number; json?(): Promise<unknown> }>;
@@ -43,6 +47,10 @@ type Probe = (url: string) => Promise<{ ok: boolean; status: number; sizeBytes?:
 export interface DoctorOptions {
   readonly fetch?: JsonFetch;
   readonly probe?: Probe;
+  /** --full: actually download + extract the runtime and report the binary path. */
+  readonly full?: boolean;
+  /** Injectable runtime installer (for smoke — avoids the real ~11MB download). */
+  readonly ensureRuntime?: (o?: { onProgress?: (p: { message: string }) => void }) => Promise<string>;
 }
 
 async function fileExists(p: string): Promise<boolean> {
@@ -105,6 +113,20 @@ export async function runDoctor(opts: DoctorOptions = {}): Promise<DoctorReport>
     } catch (e) {
       report.resolveError = String(e);
     }
+
+    // --full: really download + extract the runtime and report the binary path.
+    // Guarded: network failures (offline) skip gracefully instead of erroring.
+    if (opts.full) {
+      const ensure = opts.ensureRuntime ?? realEnsureRuntime;
+      try {
+        report.fullRuntimePath = await ensure();
+      } catch (e) {
+        const msg = String(e);
+        report.fullError = /network|fetch|ENOTFOUND|EAI_AGAIN|getaddrinfo|timed out|ECONN/i.test(msg)
+          ? "offline: skipped the runtime download"
+          : msg;
+      }
+    }
   }
 
   return report;
@@ -143,6 +165,8 @@ export function formatDoctor(r: DoctorReport): string {
       lines.push(`  Asset:      ${r.asset}`);
       lines.push(`  Reachable:  ${r.reachable ? `yes (${mb(r.sizeBytes)})` : "no — couldn't reach it"}`);
     }
+    if (r.fullRuntimePath) lines.push(`  Downloaded: ${r.fullRuntimePath}`);
+    else if (r.fullError) lines.push(`  Downloaded: ${r.fullError}`);
   }
 
   const ok = r.provisioned.ready || (r.ggufPresent && (r.reachable ?? false));

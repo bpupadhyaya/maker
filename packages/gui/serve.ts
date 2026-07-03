@@ -20,7 +20,7 @@ import {
   setMacro, removeMacro, listMacros, resolveMacro,
   grantPath, isGranted, listGrantedPaths, revokePath,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
-  addHook, listHooks, removeHook, runHooks,
+  addHook, listHooks, removeHook, runHooks, startWatcher,
   recordPrompt, historyOverview, searchHistory,
   getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
@@ -344,6 +344,7 @@ export async function startServer(
   await maker.restore();
   await recordSession(store);
   const scheduleRunner = startScheduleRunner(maker, store);
+  const watcher = await startWatcher(store); // H9.6: file-change hooks on granted folders
 
   const resolveDir = (p: string): string => {
     const home = os.homedir();
@@ -418,6 +419,7 @@ export async function startServer(
     close: () =>
       new Promise<void>((resolve) => {
         scheduleRunner.stop();
+        watcher.stop();
         modelRuntimeStop?.();
         visionStop?.();
         void maker.stop().finally(() => server.close(() => resolve()));
