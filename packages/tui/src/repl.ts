@@ -20,7 +20,7 @@ import {
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
-  getSettings, setSetting,
+  getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
   grantPath, isGranted, listGrantedPaths, revokePath,
 } from "../../store/src/index.ts";
@@ -103,28 +103,42 @@ export async function main(): Promise<void> {
 
   // Turnkey (H6.3): if a model is downloaded, the app runs it itself — fetch the
   // runtime + start llama-server, no external tools. Falls back cleanly otherwise.
-  let inference = makeInference(backendName, activeEntry?.ollama);
-  let modelRuntimeStop: (() => void) | undefined;
-  try {
-    const runtime = await startModelRuntime({
-      onProgress: (msg) => process.stdout.write(`  ${msg}\n`),
-    });
-    if (runtime) {
-      inference = llamaCppInference({ host: runtime.url });
-      modelRuntimeStop = runtime.stop;
-      process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
-    }
-  } catch (err) {
-    process.stdout.write(`(Local runtime not ready — ${String(err)}\n Sideload a .gguf or use Ollama meanwhile.)\n`);
-  }
-
   const store = fileMemoryStore();
+  // Stable wrapper so /use can hot-swap the live backend without recreating the maker.
+  let currentBackend = makeInference(backendName, activeEntry?.ollama);
+  let modelRuntimeStop: (() => void) | undefined;
+  const inference: InferenceBackend = {
+    name: "maker",
+    isAvailable: () => currentBackend.isAvailable(),
+    generate: (req) => currentBackend.generate(req),
+  };
+  const activateModelRuntime = async (modelId?: string): Promise<string | null> => {
+    try {
+      const runtime = await startModelRuntime({
+        ...(modelId ? { modelId } : {}),
+        onProgress: (msg) => process.stdout.write(`  ${msg}\n`),
+      });
+      if (runtime) {
+        modelRuntimeStop?.();
+        modelRuntimeStop = runtime.stop;
+        currentBackend = llamaCppInference({ host: runtime.url });
+        process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
+        return runtime.modelId;
+      }
+    } catch (err) {
+      process.stdout.write(`(Local runtime not ready — ${String(err)}\n Sideload a .gguf or use Ollama meanwhile.)\n`);
+    }
+    return null;
+  };
+  await activateModelRuntime();
+
   const maker = createMaker({
     inference,
     runtime: localWebRuntime(),
     store,
     taste: tasteMemory(store),
     multiTool: true,
+    genParams: () => generationParams(store),
     onToolBuilt: async (toolId) => {
       const p = await getActiveProject(store);
       await addToolToProject(store, p.id, toolId);
@@ -230,7 +244,9 @@ export async function main(): Promise<void> {
   async function cmdUse(arg: string): Promise<void> {
     if (!arg) return void write("usage: /use <model-id>\n");
     await setActiveModel(arg);
-    write(`\nActive model set to ${arg}. Restart Maker to use it.\n`);
+    write(`\nSwitching to ${arg}…\n`);
+    const running = await activateModelRuntime(); // live hot-swap, no relaunch
+    write(running ? `✓ Now running ${running}.\n` : `Set active to ${arg} (will apply on next model start).\n`);
   }
   async function cmdRemove(arg: string): Promise<void> {
     if (!arg) return void write("usage: /remove <model-id>\n");
@@ -823,6 +839,7 @@ export async function main(): Promise<void> {
       }
       return false;
     },
+    needsApproval: async () => (await getSettings(store)).approvalMode === "ask",
     onRequest: (line) => {
       void recordPrompt(store, line);
       void recordTokens(store, Math.ceil(line.length / 4));

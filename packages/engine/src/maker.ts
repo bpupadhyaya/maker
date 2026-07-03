@@ -34,6 +34,10 @@ export interface MakerDeps {
   readonly toolId?: string;
   /** Multi-tool workshop: each new tool gets its own id from its goal (H9.1). */
   readonly multiTool?: boolean;
+  /** Effort → generation params, read fresh per turn (H9.4). */
+  readonly genParams?: () =>
+    | { temperature?: number; maxTokens?: number }
+    | Promise<{ temperature?: number; maxTokens?: number }>;
   /** Optional local persistence; when present, Brief + tool survive restarts. */
   readonly store?: MemoryStore;
   /** Optional taste-memory; when present, decisions shrink gap-detection. */
@@ -95,10 +99,13 @@ export function createMaker(deps: MakerDeps): Maker {
   const multiTool = deps.multiTool ?? false;
   let toolId = deps.toolId ?? (multiTool ? "untitled" : "tool");
   let toolNamed = !multiTool; // in multiTool, the id is assigned on first build
-  let session = createSession({
-    inference: deps.inference,
-    systemPrompt: MAKER_SYSTEM_PROMPT,
-  });
+  const makeSession = () =>
+    createSession({
+      inference: deps.inference,
+      systemPrompt: MAKER_SYSTEM_PROMPT,
+      ...(deps.genParams ? { genParams: deps.genParams } : {}),
+    });
+  let session = makeSession();
 
   let current: RunningTool | undefined;
   let brief: Brief = emptyBrief();
@@ -280,7 +287,7 @@ export function createMaker(deps: MakerDeps): Maker {
 
   async function openTool(id: string): Promise<boolean> {
     await persist();
-    session = createSession({ inference: deps.inference, systemPrompt: MAKER_SYSTEM_PROMPT });
+    session = makeSession();
     checks = [smokeCheck()];
     contract = undefined;
     const ok = await loadTool(id);
@@ -315,7 +322,7 @@ export function createMaker(deps: MakerDeps): Maker {
     lastFiles = undefined;
     contract = undefined;
     checks = [smokeCheck()];
-    session = createSession({ inference: deps.inference, systemPrompt: MAKER_SYSTEM_PROMPT });
+    session = makeSession();
     void current?.stop();
     current = undefined;
   }
@@ -332,10 +339,7 @@ export function createMaker(deps: MakerDeps): Maker {
       return session.history;
     },
     clearConversation() {
-      session = createSession({
-        inference: deps.inference,
-        systemPrompt: MAKER_SYSTEM_PROMPT,
-      });
+      session = makeSession();
     },
     get toolId() {
       return toolId;

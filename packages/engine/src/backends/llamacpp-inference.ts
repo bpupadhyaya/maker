@@ -64,6 +64,8 @@ export function llamaCppInference(opts: LlamaCppOptions = {}): InferenceBackend 
           model: opts.model ?? "local",
           messages,
           stream: true,
+          ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+          ...(req.maxTokens !== undefined ? { max_tokens: req.maxTokens } : {}),
         }),
       });
       if (!res.ok) throw new Error(`llama.cpp HTTP ${res.status} ${res.statusText}`.trim());

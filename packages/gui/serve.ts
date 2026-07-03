@@ -22,7 +22,7 @@ import {
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
-  getSettings, setSetting,
+  getSettings, setSetting, generationParams,
   recordSession, recordToolBuilt, recordTokens, getStats,
 } from "../store/src/index.ts";
 import type { Settings } from "../store/src/index.ts";
@@ -332,6 +332,7 @@ export async function startServer(
     taste: tasteMemory(store),
     registry: toolRegistry(store),
     multiTool: true,
+    genParams: () => generationParams(store),
     onToolBuilt: async (toolId) => {
       lastToolId = toolId;
       const p = await getActiveProject(store);

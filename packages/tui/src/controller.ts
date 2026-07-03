@@ -28,6 +28,8 @@ export interface RunOptions {
   /** Intercept a natural-language line (e.g. "save the project in ~/Downloads")
    *  before it reaches the model. Return true if fully handled. */
   readonly intercept?: (line: string) => Promise<boolean>;
+  /** Approval mode (H9.4): if this returns true, confirm y/n before building. */
+  readonly needsApproval?: () => Promise<boolean> | boolean;
 }
 
 /**
@@ -44,8 +46,30 @@ async function drive(
   if (prompt) io.write(prompt);
 
   const commands = opts.commands ?? {};
+  let pendingApproval: string | undefined; // approval mode: a build awaiting y/n
+
+  const expressLine = async (toExpress: string): Promise<void> => {
+    opts.onRequest?.(toExpress);
+    for await (const ev of respond(toExpress)) {
+      opts.onEvent?.(ev);
+      io.write(renderEvent(ev));
+    }
+    io.write("\n");
+  };
+
   for await (const line of io.input) {
     const trimmed = line.trim();
+
+    // A build is waiting for confirmation — this line is the y/n answer.
+    if (pendingApproval !== undefined) {
+      const req = pendingApproval;
+      pendingApproval = undefined;
+      if (/^y(es)?$/i.test(trimmed)) await expressLine(req);
+      else io.write("Cancelled — nothing built.\n");
+      if (prompt) io.write(prompt);
+      continue;
+    }
+
     // Quit on the natural phrasings too — "quit" without the slash went to the
     // model, which said goodbye without quitting.
     if (/^\/?(exit|quit|q)$/i.test(trimmed)) break;
@@ -67,12 +91,13 @@ async function drive(
           toExpress = macro;
         }
       }
-      opts.onRequest?.(toExpress);
-      for await (const ev of respond(toExpress)) {
-        opts.onEvent?.(ev);
-        io.write(renderEvent(ev));
+      // Approval mode: confirm before sending the build to the model.
+      if (opts.needsApproval && (await opts.needsApproval())) {
+        io.write(`Build: ${toExpress}\n  Proceed? (y/n) `);
+        pendingApproval = toExpress;
+        continue; // wait for the y/n on the next line (prompt not re-written)
       }
-      io.write("\n");
+      await expressLine(toExpress);
     }
 
     if (prompt) io.write(prompt);

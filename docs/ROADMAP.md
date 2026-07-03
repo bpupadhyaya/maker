@@ -122,7 +122,7 @@ Goal: offline · instant · private · builds runnable tools — push GUI + TUI 
 
 - ✅ H9.2 rewind — before each rebuild the tool's files snapshot into `<id>/.rings/<n>/` (cap 20; build preserves `.rings`); `maker.undo()` restores the previous ring (rebuild+rerun, checks re-run, ring consumed). GUI ↩ Undo + /api/undo; TUI /undo. Smoke: v3→undo→v2→undo→v1.
 - ✅ H9.3 smart LOCAL vision routing — decideVisionRoute(pure); an image request when the active model is text-only but a vision model is installed starts that vision model on a free port on demand (startModelRuntime({modelId}) + --mmproj), caches it, reuses it, stops on exit; the builder model stays primary for code; honest transcript note ('👁 Routed to <vision> …'); warns only when NO vision model is installed. Wired into /api/express + /api/chat via a per-request backend override. Smoke: decision matrix + warn path.
-- ⏭️ H9.4 runtime controls (TUI /use hot-swap, effort→params, approval-mode)
+- ✅ H9.4 runtime controls — (a) TUI /use hot-swaps the live model (stable inference wrapper + reusable activateModelRuntime(modelId); restarts llama-server on the new model, no relaunch); (b) effort→params: EFFORT_PRESETS (low 0.2/512, med 0.5/1024, high 0.8/2048) + generationParams(store), threaded via SessionDeps.genParams/MakerDeps.genParams, applied in session.send, passed through llamacpp body (temperature/max_tokens); (c) approval-mode: controller pending-approval y/n before a build when settings.approvalMode='ask'. Smoke: preset flow-through, llamacpp body, cancel-on-n.
 - ⏭️ H9.5 conversation persistence (auto-resume)
 - ⏭️ H9.6 file-change watcher + doctor --full
 - ⏭️ H9.7 polish + docs

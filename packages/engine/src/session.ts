@@ -7,6 +7,10 @@ export interface SessionDeps {
   readonly inference: InferenceBackend;
   /** Optional system prompt seeded into the conversation. */
   readonly systemPrompt?: string;
+  /** Effort → generation params (temperature/maxTokens), read fresh each turn (H9.4). */
+  readonly genParams?: () =>
+    | { temperature?: number; maxTokens?: number }
+    | Promise<{ temperature?: number; maxTokens?: number }>;
 }
 
 /** Per-turn options (e.g. images for vision models). */
@@ -39,10 +43,13 @@ export function createSession(deps: SessionDeps): Session {
     history.push({ role: "user", content: userMessage });
     let assembled = "";
     const images = opts?.images;
+    const params = deps.genParams ? await deps.genParams() : {};
     try {
       for await (const chunk of deps.inference.generate({
         messages: history,
         ...(images && images.length ? { images } : {}),
+        ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
+        ...(params.maxTokens !== undefined ? { maxTokens: params.maxTokens } : {}),
       })) {
         assembled += chunk;
         yield { type: "assistant-delta", text: chunk };

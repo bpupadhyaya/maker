@@ -39,7 +39,7 @@ export { addHook, listHooks, removeHook, runHooks } from "./hooks.ts";
 export type { Hook, HookEvent } from "./hooks.ts";
 export { recordPrompt, listPrompts, historyOverview, searchHistory } from "./history.ts";
 export type { HistoryHit } from "./history.ts";
-export { getSettings, setSetting, DEFAULT_SETTINGS } from "./settings.ts";
+export { getSettings, setSetting, DEFAULT_SETTINGS, EFFORT_PRESETS, generationParams } from "./settings.ts";
 export type { Settings } from "./settings.ts";
 export { recordSession, recordToolBuilt, recordTokens, getStats } from "./stats.ts";
 export type { Stats } from "./stats.ts";
