@@ -21,6 +21,8 @@ export interface TurnOptions {
 export interface Session {
   /** Process one user turn, streaming events as they happen. */
   send(userMessage: string, opts?: TurnOptions): AsyncIterable<MakerEvent>;
+  /** Restore prior non-system turns (auto-resume, H9.5). Replaces existing non-system history. */
+  load(messages: readonly ChatMessage[]): void;
   /** The conversation so far (for inspection and tests). */
   readonly history: readonly ChatMessage[];
 }
@@ -66,6 +68,12 @@ export function createSession(deps: SessionDeps): Session {
 
   return {
     send,
+    load(messages: readonly ChatMessage[]): void {
+      // Keep the seeded system prompt; replace the rest with the restored turns.
+      const system = history[0]?.role === "system" ? [history[0]] : [];
+      history.length = 0;
+      history.push(...system, ...messages.filter((m) => m.role !== "system"));
+    },
     get history() {
       return history;
     },

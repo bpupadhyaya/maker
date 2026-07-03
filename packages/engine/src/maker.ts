@@ -118,11 +118,16 @@ export function createMaker(deps: MakerDeps): Maker {
 
   const briefKey = (): string => `${toolId}:brief`;
   const filesKey = (): string => `${toolId}:files`;
+  const historyKey = (): string => `${toolId}:history`;
+  const HISTORY_CAP = 50;
 
   async function persist(): Promise<void> {
     if (!deps.store || !toolNamed) return;
     await deps.store.set(briefKey(), brief);
     if (lastFiles) await deps.store.set(filesKey(), lastFiles);
+    // Auto-resume (H9.5): keep the last N non-system turns.
+    const turns = session.history.filter((m) => m.role !== "system").slice(-HISTORY_CAP);
+    await deps.store.set(historyKey(), turns);
     await deps.store.set("workshop:lastActiveTool", toolId);
   }
 
@@ -262,8 +267,13 @@ export function createMaker(deps: MakerDeps): Maker {
     toolNamed = true;
     const savedBrief = await deps.store.get<Brief>(briefKey());
     const savedFiles = await deps.store.get<Record<string, string>>(filesKey());
+    const savedHistory = await deps.store.get<{ role: string; content: string }[]>(historyKey());
     brief = savedBrief ?? emptyBrief();
     gapsChecked = Boolean(savedBrief); // don't re-ask gaps on a reopened tool
+    // Auto-resume the conversation (H9.5).
+    if (savedHistory && savedHistory.length) {
+      session.load(savedHistory as { role: "user" | "assistant" | "system"; content: string }[]);
+    }
     if (current) await current.stop();
     current = undefined;
     lastFiles = undefined;
@@ -340,6 +350,7 @@ export function createMaker(deps: MakerDeps): Maker {
     },
     clearConversation() {
       session = makeSession();
+      void deps.store?.delete(historyKey()); // wipe the persisted transcript too
     },
     get toolId() {
       return toolId;
