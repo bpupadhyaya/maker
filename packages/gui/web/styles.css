@@ -99,6 +99,11 @@ body {
 .turn.clarify { color: var(--accent); }
 .turn.error { color: #f7768e; }
 .turn.ok { color: #9ece6a; }
+.turn.permission { border: 1px solid var(--accent); border-radius: 8px; padding: 12px; margin: 8px 0; color: var(--ink); }
+.turn.permission code { word-break: break-all; }
+.perm-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.perm-actions button { background: var(--accent); color: #0e0e12; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+.perm-actions button.danger { background: transparent; color: var(--muted); border: 1px solid #2a2a31; }
 
 #project-select { background: var(--panel); color: var(--ink); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 8px; }
 #project-new { background: transparent; color: var(--muted); border: 1px solid #2a2a31; border-radius: 6px; padding: 4px 9px; cursor: pointer; }

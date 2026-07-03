@@ -12,6 +12,7 @@ export {
 export { writeHandoff } from "./handoff-writer.ts";
 export type { HandoffBundle } from "./handoff-writer.ts";
 export { getRoles, setRoles, isOnboarded, markOnboarded } from "./profile.ts";
+export { listGrantedPaths, grantPath, revokePath, isGranted } from "./permissions.ts";
 export {
   listProjects,
   getProject,

@@ -211,6 +211,15 @@ $("#composer").addEventListener("submit", (e) => {
   // Allow sending just an image (no text) — default to a describe prompt.
   if (!text && pendingImages.length) text = "What's in this image?";
   if (!text) return;
+  // "save [the project] [in|to <folder>]" → the permission-gated save flow,
+  // NOT the model (small models just say "I can't access files").
+  const save = /^\s*(?:please\s+)?save\b(?:\s+(?:the\s+)?(?:project|tool|it|this|files?))?(?:\s+(?:in|to|into|at)\s+(.+?))?\s*$/i.exec(text);
+  if (save && !text.startsWith("/")) {
+    const base = (save[1] || "~/Downloads").trim().replace(/\/+$/, "");
+    addTurn("user", text);
+    saveTo(`${base}/${toolSlug()}`, false);
+    return;
+  }
   // approvalMode: "ask" confirms before building (interrogate more).
   if (settings.approvalMode === "ask" && !text.startsWith("/") && !confirm("Build: " + text + " ?")) return;
   express(text).catch((err) => addTurn("error", String(err)));
@@ -240,14 +249,37 @@ $("#set-theme").addEventListener("change", (e) => saveSetting("theme", e.target.
 $("#set-approval").addEventListener("change", (e) => saveSetting("approvalMode", e.target.value));
 loadSettings();
 
-// ---------- export the current tool ----------
-$("#export-btn").addEventListener("click", async () => {
-  const name = prompt("Save the current tool to ~/Downloads/ as folder name:", "my-tool");
-  if (!name) return;
-  const res = await post("/api/export", { name });
-  const data = await res.json();
-  if (data.path) addTurn("ok", "✓ Saved the tool's files to " + data.path);
-  else addTurn("error", data.error || "Couldn't export — build a tool first.");
+// ---------- save the current tool (with permission, like Claude Code) ----------
+function toolSlug() {
+  const goal = ($(".brief-goal")?.textContent || "").replace(/^Goal:\s*/i, "").trim();
+  const s = goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  return s || "my-tool";
+}
+async function saveTo(dir, force) {
+  const res = await (await post("/api/save", { dir, force: !!force })).json();
+  if (res.path) { addTurn("ok", "✓ Saved your tool to " + res.path); return; }
+  if (res.needsPermission) { showPermissionCard(res.dir, res.parent); return; }
+  addTurn("error", res.error || "Couldn't save — build a tool first.");
+}
+function showPermissionCard(dir, parent) {
+  const el = document.createElement("div");
+  el.className = "turn permission";
+  const q = document.createElement("div");
+  q.innerHTML = `🔒 Maker wants to create and write files in:<br><code>${dir}</code><br>Allow?`;
+  const row = document.createElement("div");
+  row.className = "perm-actions";
+  const allowOnce = button("Allow once", async () => { el.remove(); await saveTo(dir, true); });
+  const always = button(`Always allow ${parent}`, async () => { el.remove(); await post("/api/permissions/grant", { dir: parent }); await saveTo(dir, false); });
+  const deny = button("Deny", () => { el.remove(); addTurn("assistant", "Okay — nothing written."); });
+  deny.className = "danger";
+  row.append(allowOnce, always, deny);
+  el.append(q, row);
+  transcript.appendChild(el);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+$("#export-btn").addEventListener("click", () => {
+  const dir = prompt("Save the current tool to which folder?", "~/Downloads/" + toolSlug());
+  if (dir) saveTo(dir, false);
 });
 
 // ---------- usage stats ----------

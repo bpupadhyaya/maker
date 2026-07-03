@@ -18,6 +18,7 @@ import {
   fileMemoryStore, tasteMemory, toolRegistry, getRoles, setRoles, isOnboarded,
   listProjects, createProject, getActiveProject, setActiveProject, addToolToProject,
   setMacro, removeMacro, listMacros, resolveMacro,
+  grantPath, isGranted,
   addSchedule, listSchedules, removeSchedule, cronLineFor, startScheduleRunner,
   addHook, listHooks, removeHook, runHooks,
   recordPrompt, historyOverview, searchHistory,
@@ -235,34 +236,42 @@ export async function startServer(
   await recordSession(store);
   const scheduleRunner = startScheduleRunner(maker, store);
 
-  const exportTool = async (name: string): Promise<string> => {
-    // Prefer the tool built this session; else fall back to the most-recently-
-    // modified tool on disk (so Save works after a restart too).
-    let id = lastToolId;
-    if (!id) {
-      try {
-        const entries = await fs.readdir(toolsDir, { withFileTypes: true });
-        const dirs: { name: string; mtime: number }[] = [];
-        for (const e of entries) {
-          if (!e.isDirectory()) continue;
-          try {
-            const st = await fs.stat(path.join(toolsDir, e.name, "index.html"));
-            dirs.push({ name: e.name, mtime: st.mtimeMs });
-          } catch {
-            // no index.html — not a runnable tool dir
-          }
+  const resolveDir = (p: string): string => {
+    const home = os.homedir();
+    let d = p.trim();
+    if (d === "~") d = home;
+    else if (d.startsWith("~/")) d = path.join(home, d.slice(2));
+    else if (d.startsWith("~")) d = path.join(home, d.slice(1)); // "~Downloads"
+    return path.resolve(d);
+  };
+
+  // Find the tool to save: the one built this session, else the newest on disk.
+  const currentToolDir = async (): Promise<string | undefined> => {
+    if (lastToolId) return path.join(toolsDir, lastToolId);
+    try {
+      const entries = await fs.readdir(toolsDir, { withFileTypes: true });
+      const dirs: { name: string; mtime: number }[] = [];
+      for (const e of entries) {
+        if (!e.isDirectory()) continue;
+        try {
+          const st = await fs.stat(path.join(toolsDir, e.name, "index.html"));
+          dirs.push({ name: e.name, mtime: st.mtimeMs });
+        } catch {
+          // no index.html — not a runnable tool dir
         }
-        dirs.sort((a, b) => b.mtime - a.mtime);
-        id = dirs[0]?.name;
-      } catch {
-        // no tools dir yet
       }
+      dirs.sort((a, b) => b.mtime - a.mtime);
+      return dirs[0] ? path.join(toolsDir, dirs[0].name) : undefined;
+    } catch {
+      return undefined;
     }
-    if (!id) throw new Error("No tool built yet — build one first.");
-    const src = path.join(toolsDir, id);
-    const safe = (name || "my-tool").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-tool";
-    const dest = path.join(os.homedir(), "Downloads", safe);
-    await fs.rm(dest, { recursive: true, force: true });
+  };
+
+  // Copy the current tool's files into an already-permitted folder.
+  const saveToolTo = async (dest: string): Promise<string> => {
+    const src = await currentToolDir();
+    if (!src) throw new Error("No tool built yet — build one first.");
+    await fs.mkdir(dest, { recursive: true });
     await fs.cp(src, dest, { recursive: true });
     return dest;
   };
@@ -280,7 +289,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime, exportTool).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -312,7 +321,8 @@ async function handle(
   maker: Maker,
   store: ReturnType<typeof fileMemoryStore>,
   activateModelRuntime: () => Promise<string | null>,
-  exportTool: (name: string) => Promise<string>,
+  saveToolTo: (dest: string) => Promise<string>,
+  resolveDir: (p: string) => string,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -432,17 +442,31 @@ async function handle(
     return;
   }
 
-  // --- export the current tool to a real folder (~/Downloads/<name>) ---
-  if (url === "/api/export" && method === "POST") {
+  // --- save the current tool to a folder, with permission (like Claude Code) ---
+  if (url === "/api/save" && method === "POST") {
     const body = await readJson(req);
+    const dest = resolveDir(String(body["dir"] ?? path.join(os.homedir(), "Downloads", "my-tool")));
+    const force = body["force"] === true;
+    res.setHeader("content-type", "application/json");
+    if (!force && !(await isGranted(store, dest))) {
+      // Not permitted yet — ask the user (the GUI shows Allow/Deny).
+      res.end(JSON.stringify({ needsPermission: true, dir: dest, parent: path.dirname(dest) }));
+      return;
+    }
     try {
-      const dest = await exportTool(String(body["name"] ?? "my-tool"));
-      res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ path: dest }));
+      const path0 = await saveToolTo(dest);
+      res.end(JSON.stringify({ path: path0 }));
     } catch (e) {
       res.statusCode = 400;
       res.end(JSON.stringify({ error: String(e) }));
     }
+    return;
+  }
+  if (url === "/api/permissions/grant" && method === "POST") {
+    const body = await readJson(req);
+    await grantPath(store, resolveDir(String(body["dir"] ?? "")));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
