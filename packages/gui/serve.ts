@@ -45,7 +45,8 @@ import {
   ensureRuntime,
   shouldFetchRuntime,
   mmprojPath,
-  decideVisionRoute,
+  classifyTask,
+  routeModel,
 } from "../provision/src/index.ts";
 
 /**
@@ -253,11 +254,10 @@ export async function startServer(
     generate: (req) => (requestOverride ?? currentBackend).generate(req),
   };
 
-  // --- Vision routing (H9.3): lazily start an installed vision model on demand,
-  //     cache it, and reuse for image requests. Stopped on process exit. ---
-  let visionBackend: InferenceBackend | undefined;
-  let visionStop: (() => void) | undefined;
-  let visionModelId: string | undefined;
+  // --- Capability router (H9.3 → H9.8): route a request to the best installed
+  //     model (vision for images, coder for build tasks), starting it on demand,
+  //     caching per model id, and reusing it. All backends stopped on exit. ---
+  const modelBackends = new Map<string, { backend: InferenceBackend; stop: () => void }>();
   const installedVisionIds = async (): Promise<string[]> => {
     const out: string[] = [];
     for (const m of await listInstalledModels()) {
@@ -265,46 +265,47 @@ export async function startServer(
     }
     return out;
   };
-  const ensureVisionBackend = async (): Promise<{ backend: InferenceBackend; modelId: string } | null> => {
-    if (visionBackend && visionModelId) return { backend: visionBackend, modelId: visionModelId };
-    const ids = await installedVisionIds();
-    const vid = ids[0];
-    if (!vid) return null;
-    const rt = await startModelRuntime({ modelId: vid });
+  const ensureModelBackend = async (modelId: string): Promise<InferenceBackend | null> => {
+    const cached = modelBackends.get(modelId);
+    if (cached) return cached.backend;
+    const rt = await startModelRuntime({ modelId });
     if (!rt) return null;
-    visionStop = rt.stop;
-    visionModelId = rt.modelId;
-    visionBackend = llamaCppInference({ host: rt.url });
-    process.stdout.write(`Vision model ${vid} ready for image requests (${rt.url}).\n`);
-    return { backend: visionBackend, modelId: vid };
+    const backend = llamaCppInference({ host: rt.url });
+    modelBackends.set(modelId, { backend, stop: rt.stop });
+    process.stdout.write(`Model ${modelId} ready for routing (${rt.url}).\n`);
+    return backend;
   };
-  // Decide + apply routing for a request's images; returns a transcript note/warn.
-  const beginVisionRoute = async (images: string[]): Promise<{ note?: string; warn?: string }> => {
+  const stopRoutedBackends = (): void => {
+    for (const { stop } of modelBackends.values()) { try { stop(); } catch { /* already gone */ } }
+    modelBackends.clear();
+  };
+  // Decide + apply routing for a request; returns a transcript note/warn.
+  const beginRoute = async (request: string, images: string[]): Promise<{ note?: string; warn?: string }> => {
     requestOverride = undefined;
-    if (!images.length) return {};
     const activeId = await getActiveModel();
-    const activeHasVision = activeId
-      ? await fs.access(mmprojPath(activeId)).then(() => true, () => false)
-      : false;
-    const vids = await installedVisionIds();
-    const route = decideVisionRoute({ hasImages: true, activeHasVision, installedVisionIds: vids });
-    if (route === "primary") {
-      return activeHasVision ? { note: `👁 Reading your image with ${activeId}.\n\n` } : {};
+    const task = classifyTask(request, images.length > 0);
+    const installedIds = (await listInstalledModels()).map((m) => m.id);
+    const visionIds = await installedVisionIds();
+    // Vision needs a model that can see: warn if none installed.
+    if (task === "vision" && !(activeId && visionIds.includes(activeId)) && visionIds.length === 0) {
+      return {
+        warn: `⚠ Your current model (${activeId ?? "none"}) is text-only and no vision model is installed. ` +
+          `Download one in ⛁ Models (Qwen2.5-VL 7B ~6GB, or Moondream2 ~2GB) and I'll read your image. Continuing with just your text.\n\n`,
+      };
     }
-    if (route === "route-vision") {
-      const v = await ensureVisionBackend();
-      if (v) {
-        requestOverride = v.backend;
-        return { note: `👁 Routed to vision model ${v.modelId} to read your image (builder model stays ${activeId ?? "primary"}).\n\n` };
+    const route = routeModel({ task, activeId, installedIds, visionIds });
+    if (route.modelId && route.modelId !== activeId) {
+      const backend = await ensureModelBackend(route.modelId);
+      if (backend) {
+        requestOverride = backend;
+        const icon = task === "vision" ? "👁" : "🔀";
+        return { note: `${icon} Answered by ${route.modelId} — ${route.reason} (active model: ${activeId ?? "none"}).\n\n` };
       }
     }
-    return {
-      warn: `⚠ Your current model (${activeId ?? "none"}) is text-only and no vision model is installed. ` +
-        `Download one in ⛁ Models (Qwen2.5-VL 7B ~6GB, or Moondream2 ~2GB) and I'll read your image. Continuing with just your text.\n\n`,
-    };
+    return task === "vision" && activeId ? { note: `👁 Reading your image with ${activeId}.\n\n` } : {};
   };
-  const endVisionRoute = (): void => { requestOverride = undefined; };
-  const visionRouter = { begin: beginVisionRoute, end: endVisionRoute };
+  const endRoute = (): void => { requestOverride = undefined; };
+  const visionRouter = { begin: beginRoute, end: endRoute };
   const activateModelRuntime = async (): Promise<string | null> => {
     try {
       const runtime = await startModelRuntime();
@@ -421,7 +422,7 @@ export async function startServer(
         scheduleRunner.stop();
         watcher.stop();
         modelRuntimeStop?.();
-        visionStop?.();
+        stopRoutedBackends();
         void maker.stop().finally(() => server.close(() => resolve()));
       }),
   };
@@ -437,7 +438,7 @@ async function handle(
   resolveDir: (p: string) => string,
   inference: InferenceBackend,
   visionRouter: {
-    begin: (images: string[]) => Promise<{ note?: string; warn?: string }>;
+    begin: (request: string, images: string[]) => Promise<{ note?: string; warn?: string }>;
     end: () => void;
   },
 ): Promise<void> {
@@ -668,7 +669,7 @@ async function handle(
     const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     await recordPrompt(store, request);
     sse(res);
-    const vrc = await visionRouter.begin(images);
+    const vrc = await visionRouter.begin(request, images);
     if (vrc.note || vrc.warn) {
       res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vrc.note ?? vrc.warn })}\n\n`);
     }
@@ -746,7 +747,7 @@ async function handle(
     sse(res);
     // Vision routing (H9.3): route image requests to a vision model if needed,
     // else warn. The note tells the user which model is answering.
-    const vr = await visionRouter.begin(images);
+    const vr = await visionRouter.begin(request, images);
     if (vr.note || vr.warn) {
       res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vr.note ?? vr.warn })}\n\n`);
     }

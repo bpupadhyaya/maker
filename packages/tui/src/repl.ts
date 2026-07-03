@@ -46,6 +46,8 @@ import {
   provisionModelAndRuntime,
   detectRuntime,
   checkProvisioned,
+  routeModel,
+  mmprojPath,
 } from "../../provision/src/index.ts";
 import type { MakerEvent } from "../../engine/src/index.ts";
 import { runMakerConversation } from "./controller.ts";
@@ -612,6 +614,21 @@ export async function main(): Promise<void> {
       return "0.0.0";
     }
   }
+  async function cmdRoute(): Promise<void> {
+    const activeId = await getActiveModel();
+    const installed = await listInstalledModels();
+    const installedIds = installed.map((m) => m.id);
+    const visionIds: string[] = [];
+    for (const m of installed) {
+      if (await fsp.access(mmprojPath(m.id)).then(() => true, () => false)) visionIds.push(m.id);
+    }
+    write(`\nModel routing (active: ${activeId ?? "none"}):\n`);
+    for (const task of ["vision", "code", "chat"] as const) {
+      const r = routeModel({ task, activeId, installedIds, visionIds });
+      write(`  ${task.padEnd(7)} → ${r.modelId ?? "(none)"}  — ${r.reason}\n`);
+    }
+    write(`Installed: ${installedIds.join(", ") || "(none)"}${visionIds.length ? ` · vision: ${visionIds.join(", ")}` : ""}\n`);
+  }
   async function cmdTools(): Promise<void> {
     const tools = await maker.listTools();
     write("\nYour tools:\n");
@@ -749,6 +766,7 @@ export async function main(): Promise<void> {
     ["/remove-all", "", "remove all models", cmdRemoveAll],
     ["/reset", "[yes]", "wipe ALL data (models, tools, memory)", cmdReset],
     ["/doctor", "[full]", "readiness check (full = really download the runtime)", cmdDoctor],
+    ["/route", "", "show which model answers each task type", async () => { await cmdRoute(); }],
     ["/tools", "", "list your tools", async () => { await cmdTools(); }],
     ["/open", "<id>", "reopen a tool (continue iterating)", cmdOpen],
     ["/new", "", "start a fresh tool", async () => { await cmdNew(); }],
