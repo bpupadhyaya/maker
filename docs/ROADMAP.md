@@ -121,7 +121,7 @@ Goal: offline · instant · private · builds runnable tools — push GUI + TUI 
 **Progress:** ✅ H9.1 multi-tool workshop — the biggest flaw fixed: the GUI hardcoded toolId "tool" so every build OVERWROTE the last. Now `createMaker({multiTool:true})` gives each new tool its own id from its goal slug (deduped -2/-3); engine gained `toolId`, `listTools()`, `openTool(id)` (loads brief+files, reruns, continues), `newTool()`; restore-on-launch reopens the last active tool. GUI: a "your tools" dropdown reopens a tool + a "＋ New" button; TUI: `/tools`, `/open <id>`, `/new`. Legacy single-tool mode unchanged (opt-in), suite 56/56. Store: `tools-index.ts` (listSavedTools / last-active).
 
 - ✅ H9.2 rewind — before each rebuild the tool's files snapshot into `<id>/.rings/<n>/` (cap 20; build preserves `.rings`); `maker.undo()` restores the previous ring (rebuild+rerun, checks re-run, ring consumed). GUI ↩ Undo + /api/undo; TUI /undo. Smoke: v3→undo→v2→undo→v1.
-- ⏭️ H9.3 smart LOCAL routing (image → best vision model)
+- ✅ H9.3 smart LOCAL vision routing — decideVisionRoute(pure); an image request when the active model is text-only but a vision model is installed starts that vision model on a free port on demand (startModelRuntime({modelId}) + --mmproj), caches it, reuses it, stops on exit; the builder model stays primary for code; honest transcript note ('👁 Routed to <vision> …'); warns only when NO vision model is installed. Wired into /api/express + /api/chat via a per-request backend override. Smoke: decision matrix + warn path.
 - ⏭️ H9.4 runtime controls (TUI /use hot-swap, effort→params, approval-mode)
 - ⏭️ H9.5 conversation persistence (auto-resume)
 - ⏭️ H9.6 file-change watcher + doctor --full

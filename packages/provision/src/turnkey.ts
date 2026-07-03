@@ -21,6 +21,8 @@ export interface StartModelRuntimeOptions {
   readonly onProgress?: (message: string) => void;
   readonly ensureRuntime?: typeof realEnsureRuntime;
   readonly startServer?: typeof realStartServer;
+  /** Start THIS model instead of the active one (H9.3 vision routing). */
+  readonly modelId?: string;
 }
 
 export interface ModelRuntime {
@@ -93,7 +95,7 @@ export async function startModelRuntime(
   // Ollama manages its own server — not our job to run llama-server.
   if (process.env["MAKER_BACKEND"] === "ollama") return null;
 
-  const modelId = await getActiveModel();
+  const modelId = opts.modelId ?? (await getActiveModel());
   if (!modelId) return null;
 
   const modelPath = path.join(modelsDir(), `${modelId}.gguf`);

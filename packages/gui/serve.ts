@@ -45,6 +45,7 @@ import {
   ensureRuntime,
   shouldFetchRuntime,
   mmprojPath,
+  decideVisionRoute,
 } from "../provision/src/index.ts";
 
 /**
@@ -245,11 +246,65 @@ export async function startServer(
   // model from the running app starts using it immediately, with no restart.
   let currentBackend: InferenceBackend = makeInference(backendName);
   let modelRuntimeStop: (() => void) | undefined;
+  let requestOverride: InferenceBackend | undefined; // per-request routing (vision)
   const inference: InferenceBackend = {
     name: "maker",
-    isAvailable: () => currentBackend.isAvailable(),
-    generate: (req) => currentBackend.generate(req),
+    isAvailable: () => (requestOverride ?? currentBackend).isAvailable(),
+    generate: (req) => (requestOverride ?? currentBackend).generate(req),
   };
+
+  // --- Vision routing (H9.3): lazily start an installed vision model on demand,
+  //     cache it, and reuse for image requests. Stopped on process exit. ---
+  let visionBackend: InferenceBackend | undefined;
+  let visionStop: (() => void) | undefined;
+  let visionModelId: string | undefined;
+  const installedVisionIds = async (): Promise<string[]> => {
+    const out: string[] = [];
+    for (const m of await listInstalledModels()) {
+      if (await fs.access(mmprojPath(m.id)).then(() => true, () => false)) out.push(m.id);
+    }
+    return out;
+  };
+  const ensureVisionBackend = async (): Promise<{ backend: InferenceBackend; modelId: string } | null> => {
+    if (visionBackend && visionModelId) return { backend: visionBackend, modelId: visionModelId };
+    const ids = await installedVisionIds();
+    const vid = ids[0];
+    if (!vid) return null;
+    const rt = await startModelRuntime({ modelId: vid });
+    if (!rt) return null;
+    visionStop = rt.stop;
+    visionModelId = rt.modelId;
+    visionBackend = llamaCppInference({ host: rt.url });
+    process.stdout.write(`Vision model ${vid} ready for image requests (${rt.url}).\n`);
+    return { backend: visionBackend, modelId: vid };
+  };
+  // Decide + apply routing for a request's images; returns a transcript note/warn.
+  const beginVisionRoute = async (images: string[]): Promise<{ note?: string; warn?: string }> => {
+    requestOverride = undefined;
+    if (!images.length) return {};
+    const activeId = await getActiveModel();
+    const activeHasVision = activeId
+      ? await fs.access(mmprojPath(activeId)).then(() => true, () => false)
+      : false;
+    const vids = await installedVisionIds();
+    const route = decideVisionRoute({ hasImages: true, activeHasVision, installedVisionIds: vids });
+    if (route === "primary") {
+      return activeHasVision ? { note: `👁 Reading your image with ${activeId}.\n\n` } : {};
+    }
+    if (route === "route-vision") {
+      const v = await ensureVisionBackend();
+      if (v) {
+        requestOverride = v.backend;
+        return { note: `👁 Routed to vision model ${v.modelId} to read your image (builder model stays ${activeId ?? "primary"}).\n\n` };
+      }
+    }
+    return {
+      warn: `⚠ Your current model (${activeId ?? "none"}) is text-only and no vision model is installed. ` +
+        `Download one in ⛁ Models (Qwen2.5-VL 7B ~6GB, or Moondream2 ~2GB) and I'll read your image. Continuing with just your text.\n\n`,
+    };
+  };
+  const endVisionRoute = (): void => { requestOverride = undefined; };
+  const visionRouter = { begin: beginVisionRoute, end: endVisionRoute };
   const activateModelRuntime = async (): Promise<string | null> => {
     try {
       const runtime = await startModelRuntime();
@@ -342,7 +397,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference, visionRouter).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -363,6 +418,7 @@ export async function startServer(
       new Promise<void>((resolve) => {
         scheduleRunner.stop();
         modelRuntimeStop?.();
+        visionStop?.();
         void maker.stop().finally(() => server.close(() => resolve()));
       }),
   };
@@ -377,6 +433,10 @@ async function handle(
   saveToolTo: (dest: string) => Promise<string>,
   resolveDir: (p: string) => string,
   inference: InferenceBackend,
+  visionRouter: {
+    begin: (images: string[]) => Promise<{ note?: string; warn?: string }>;
+    end: () => void;
+  },
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -605,6 +665,10 @@ async function handle(
     const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     await recordPrompt(store, request);
     sse(res);
+    const vrc = await visionRouter.begin(images);
+    if (vrc.note || vrc.warn) {
+      res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vrc.note ?? vrc.warn })}\n\n`);
+    }
     try {
       const gen = inference.generate({
         messages: [
@@ -619,6 +683,8 @@ async function handle(
       res.write(`data: ${JSON.stringify({ type: "assistant-done" })}\n\n`);
     } catch (e) {
       res.write(`data: ${JSON.stringify({ type: "error", message: String(e) })}\n\n`);
+    } finally {
+      visionRouter.end();
     }
     res.write("event: done\ndata: {}\n\n");
     res.end();
@@ -675,21 +741,11 @@ async function handle(
     await recordTokens(store, Math.ceil(request.length / 4));
     const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     sse(res);
-    // Honesty: text models can't see. If images are attached but the active model
-    // has no vision projector, say so instead of silently ignoring the image.
-    if (images.length) {
-      const activeId = await getActiveModel();
-      const canSee = activeId
-        ? await fs.access(mmprojPath(activeId)).then(() => true, () => false)
-        : false;
-      if (!canSee) {
-        res.write(`data: ${JSON.stringify({
-          type: "assistant-delta",
-          text: `⚠ Your current model (${activeId ?? "none"}) is text-only — it can't see images. ` +
-            `Download a vision model in ⛁ Models (Qwen2.5-VL 7B ~6GB, or Moondream2 ~2GB), ` +
-            `and I'll read your image. Continuing with just your text for now.\n\n`,
-        })}\n\n`);
-      }
+    // Vision routing (H9.3): route image requests to a vision model if needed,
+    // else warn. The note tells the user which model is answering.
+    const vr = await visionRouter.begin(images);
+    if (vr.note || vr.warn) {
+      res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vr.note ?? vr.warn })}\n\n`);
     }
     try {
       for await (const ev of maker.express(request, images.length ? { images } : undefined)) {
@@ -698,6 +754,8 @@ async function handle(
       }
     } catch (e) {
       res.write(`data: ${JSON.stringify({ type: "error", message: String(e) })}\n\n`);
+    } finally {
+      visionRouter.end();
     }
     res.write("event: done\ndata: {}\n\n");
     res.end();

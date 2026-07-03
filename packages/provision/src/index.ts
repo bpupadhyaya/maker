@@ -59,4 +59,6 @@ export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runt
 export { startLlamaServer, getFreePort } from "./server-manager.ts";
 export type { StartServerOptions, RunningServer, ServerChild } from "./server-manager.ts";
 export { startModelRuntime, provisionModelAndRuntime, shouldFetchRuntime } from "./turnkey.ts";
+export { decideVisionRoute } from "./routing.ts";
+export type { VisionRoute } from "./routing.ts";
 export type { ModelRuntime, StartModelRuntimeOptions, ProvisionAllResult } from "./turnkey.ts";
