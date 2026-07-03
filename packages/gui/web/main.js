@@ -259,7 +259,8 @@ loadSettings();
 
 // ---------- save the current tool (with permission, like Claude Code) ----------
 function toolSlug() {
-  const goal = ($(".brief-goal")?.textContent || "").replace(/^Goal:\s*/i, "").trim();
+  let goal = ($(".brief-goal")?.textContent || "").replace(/^Goal:\s*/i, "").trim();
+  if (/^\(?not set/i.test(goal)) goal = ""; // ignore the "(not set yet)" placeholder
   const s = goal.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   return s || "my-tool";
 }

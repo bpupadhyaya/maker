@@ -43,6 +43,7 @@ import {
   startModelRuntime,
   ensureRuntime,
   shouldFetchRuntime,
+  mmprojPath,
 } from "../provision/src/index.ts";
 
 /**
@@ -623,6 +624,22 @@ async function handle(
     await recordTokens(store, Math.ceil(request.length / 4));
     const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     sse(res);
+    // Honesty: text models can't see. If images are attached but the active model
+    // has no vision projector, say so instead of silently ignoring the image.
+    if (images.length) {
+      const activeId = await getActiveModel();
+      const canSee = activeId
+        ? await fs.access(mmprojPath(activeId)).then(() => true, () => false)
+        : false;
+      if (!canSee) {
+        res.write(`data: ${JSON.stringify({
+          type: "assistant-delta",
+          text: `⚠ Your current model (${activeId ?? "none"}) is text-only — it can't see images. ` +
+            `Download a vision model in ⛁ Models (Qwen2.5-VL 7B ~6GB, or Moondream2 ~2GB), ` +
+            `and I'll read your image. Continuing with just your text for now.\n\n`,
+        })}\n\n`);
+      }
+    }
     try {
       for await (const ev of maker.express(request, images.length ? { images } : undefined)) {
         if (ev.type === "tool-running") void runHooks(store, "tool-running", { url: ev.url });
