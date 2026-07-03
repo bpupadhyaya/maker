@@ -662,8 +662,11 @@ async function handle(
   if (url === "/api/models/use" && method === "POST") {
     const body = await readJson(req);
     await setActiveModel(String(body["id"]));
+    // Hot-swap the runtime onto the newly selected model (was: set-only, so the
+    // old model kept serving until a restart).
+    const swapped = await activateModelRuntime();
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify({ active: String(body["id"]) }));
+    res.end(JSON.stringify({ active: String(body["id"]), running: swapped }));
     return;
   }
   if (url === "/api/models/remove" && method === "POST") {

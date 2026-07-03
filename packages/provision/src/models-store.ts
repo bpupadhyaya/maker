@@ -43,6 +43,7 @@ export async function listInstalledModels(
   const out: InstalledModel[] = [];
   for (const n of names) {
     if (!n.endsWith(".gguf")) continue;
+    if (n.endsWith(".mmproj.gguf")) continue; // a vision projector, not a model
     const id = n.slice(0, -".gguf".length);
     const p = path.join(dir, n);
     let sizeBytes = 0;
