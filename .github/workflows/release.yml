@@ -61,23 +61,16 @@ jobs:
       - name: Generate app icons from the source PNG
         run: npx --yes @tauri-apps/cli@2 icon packages/gui/src-tauri/icon-source.png --output packages/gui/src-tauri/icons
 
+      # Phase A = UNSIGNED. We deliberately pass NO signing env so Tauri ad-hoc
+      # signs on macOS and skips signing on Windows (empty cert secrets made
+      # `security import` fail). Phase B re-adds the signing env block below:
+      #   env:
+      #     APPLE_CERTIFICATE / _PASSWORD / APPLE_SIGNING_IDENTITY / APPLE_ID /
+      #     APPLE_PASSWORD / APPLE_TEAM_ID  (macOS Developer ID + notarization)
+      #     WINDOWS_CERTIFICATE / _PASSWORD  (Authenticode or Azure Trusted Signing)
+      #     TAURI_SIGNING_PRIVATE_KEY / _PASSWORD  (updater, Phase C)
       - name: Build + upload installers to the GitHub Release
         uses: tauri-apps/tauri-action@v0
-        env:
-          # --- Phase B signing (leave secrets unset for unsigned Phase A) ---
-          # macOS Developer ID + notarization:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows Authenticode (or configure Azure Trusted Signing separately):
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          # Tauri updater signing (Phase C):
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: packages/gui
           tagName: ${{ github.ref_name }}
