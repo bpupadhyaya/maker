@@ -51,6 +51,7 @@ import {
   routeModel,
   gaugeComplexity,
   shouldEscalate,
+  hasWhisperModel,
 } from "../provision/src/index.ts";
 
 /**
@@ -667,6 +668,22 @@ async function handle(
     if (mode === "never" || mode === "auto" || mode === "always") await setEscalationMode(store, mode);
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ ok: true, mode }));
+    return;
+  }
+  // --- voice input (speak to build) ---
+  if (url === "/api/voice/status" && method === "GET") {
+    res.setHeader("content-type", "application/json");
+    // hasModel = a whisper voice model is downloaded. localReady = a whisper
+    // runtime is serving it (the offline transcribe path). The runtime auto-spawn
+    // is the offline-completion step; until then the GUI uses the browser
+    // recognizer as a clearly-labeled fallback. /api/transcribe (whisper
+    // CppTranscriber over the running server) is wired for when that lands.
+    res.end(JSON.stringify({ hasModel: await hasWhisperModel(), localReady: false }));
+    return;
+  }
+  if (url === "/api/transcribe" && method === "POST") {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ needsLocal: true, reason: "Local voice runtime not running yet — use the browser recognizer, or download a voice model for fully-offline voice." }));
     return;
   }
   // --- multi-tool workshop (H9.1) ---

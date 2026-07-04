@@ -218,6 +218,52 @@ conv.addEventListener("drop", (e) => {
   for (const f of e.dataTransfer?.files ?? []) addImageFile(f);
 });
 
+// ---------- voice input (speak to build) ----------
+const micBtn = $("#mic-btn");
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizing = false, recognition = null, voiceNoticeShown = false;
+
+async function localVoiceReady() {
+  try { return (await (await fetch("/api/voice/status")).json()).localReady; } catch { return false; }
+}
+function stopVoice() {
+  try { recognition && recognition.stop(); } catch {}
+  recognizing = false;
+  micBtn.classList.remove("listening");
+}
+function startBrowserVoice() {
+  if (!SR) {
+    showToast("Voice needs Chrome's built-in speech recognition (not available in this browser). Use Chrome, or type your request.", "info");
+    return;
+  }
+  if (!voiceNoticeShown) {
+    addTurn("assistant", "🎤 Listening — say what you want to build, then review the text and press Enter. (This uses your browser's speech recognition, which may use the internet; fully-offline voice via a local model is on the way.)");
+    voiceNoticeShown = true;
+  }
+  recognition = new SR();
+  recognition.lang = navigator.language || "en-US";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  const input = $("#input");
+  const base = input.value ? input.value.replace(/\s*$/, "") + " " : "";
+  recognition.onresult = (e) => {
+    let txt = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    input.value = base + txt;
+  };
+  recognition.onerror = (e) => { showToast("Voice: " + (e.error || "error"), "info"); stopVoice(); };
+  recognition.onend = () => { recognizing = false; micBtn.classList.remove("listening"); input.focus(); };
+  recognition.start();
+  recognizing = true;
+  micBtn.classList.add("listening");
+}
+micBtn.addEventListener("click", async () => {
+  if (recognizing) { stopVoice(); return; }
+  // Offline whisper path lands here when localVoiceReady() is true; until then,
+  // use the browser recognizer (labeled) so voice→build is usable today.
+  startBrowserVoice();
+});
+
 // ---------- conversation (SSE) ----------
 async function express(request) {
   addTurn("user", pendingImages.length ? `${request}  [${pendingImages.length} image(s)]` : request);
