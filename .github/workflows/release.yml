@@ -71,6 +71,8 @@ jobs:
       #     TAURI_SIGNING_PRIVATE_KEY / _PASSWORD  (updater, Phase C)
       - name: Build + upload installers to the GitHub Release
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required to create/upload the release
         with:
           projectPath: packages/gui
           tagName: ${{ github.ref_name }}
