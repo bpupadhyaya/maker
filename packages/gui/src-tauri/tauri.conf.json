@@ -12,7 +12,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg", "nsis", "msi", "deb", "rpm"],
     "category": "DeveloperTool",
     "shortDescription": "Build tools by conversation — on-device, offline.",
     "longDescription": "Maker builds runnable tools from a conversation, 100% on your device and offline. The AI-age successor to make.",
