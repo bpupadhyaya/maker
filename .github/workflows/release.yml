@@ -84,5 +84,6 @@ jobs:
           releaseName: "Maker ${{ github.ref_name }}"
           releaseBody: "Maker — build tools by conversation, on-device and offline. Download the installer for your OS below. First run downloads a local model (the one online step)."
           releaseDraft: true
-          prerelease: false
-          args: ${{ runner.os == 'macOS' && '--target universal-apple-darwin' || '' }}
+          prerelease: true
+          # Per-arch build (the sidecar is single-arch) — macOS runner = Apple Silicon,
+          # so this produces an arm64 .dmg. Universal (arm64+x64) needs a fat sidecar; add later.
