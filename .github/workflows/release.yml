@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
-            librsvg2-dev patchelf build-essential libssl-dev file
+            librsvg2-dev patchelf build-essential libssl-dev file libfuse2
 
       - name: Build the server sidecar (no system Node needed in the app)
         run: node scripts/build-sidecar.mjs
@@ -73,6 +73,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required to create/upload the release
+          # linuxdeploy is itself an AppImage; ubuntu-24.04 lacks FUSE, so tell it to
+          # extract-and-run instead of FUSE-mount (fixes "failed to run linuxdeploy").
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         with:
           projectPath: packages/gui
           tagName: ${{ github.ref_name }}
