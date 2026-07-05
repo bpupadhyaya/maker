@@ -57,8 +57,11 @@ Just three things — no wizard, no progress bar:
 built: converse → a running web tool appears → iterate → it persists; it asks the few questions
 that matter, verifies what it builds, remembers your taste, hands off ejectable tools, composes
 tools together, and runs a local model — all offline. Both front-ends are usable: a **browser GUI**
-and a **terminal (TUI)**. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and the
-short `needs-user` list (signed installers, the compiled Tauri window, real voice/mobile/robots).
+and a **terminal (TUI)**. **Native installers** now build in CI and publish to
+[Releases](https://github.com/bpupadhyaya/maker/releases) (unsigned first cut). See
+[`docs/ROADMAP.md`](docs/ROADMAP.md) for the milestone ledger and the short `needs-user` list —
+**code-signing/notarization** (needs paid certs), the fully-offline **voice runtime**, and real
+mobile/robots. See **Fork it** below for where to pick up.
 
 ## Features
 
@@ -79,7 +82,21 @@ Everything below runs **on your machine, offline, free** (MIT, no accounts, no g
 - **Slash-command menu** — type `/` for an autocomplete menu (GUI) or Tab-complete (TUI); ~38
   commands plus your own macros, `/help` lists them.
 - **One-click models** — download, switch (live hot-swap), and remove local models from the app;
-  `maker doctor` (and `/doctor full`) verify you're offline-ready.
+  a per-model **📂 Folder** button reveals it on disk; `maker doctor` (and `/doctor full`) verify
+  you're offline-ready.
+- **Vision (image) input** — paste/drag a screenshot and Maker reads it with a local vision model.
+- **Voice input** — 🎤 speak your idea; it **auto-builds after you pause** (~3 s), or flip to
+  **Review** to edit the text first. (Uses the browser recognizer today; a fully-offline local
+  Whisper path is scaffolded — see below.)
+- **Native installers** — a wired GitHub-Actions pipeline builds **`.dmg` (macOS), `.msi`/`.exe`
+  (Windows), `.deb`/`.rpm` (Linux)** from one codebase and publishes them to
+  [Releases](https://github.com/bpupadhyaya/maker/releases). The app carries its own compiled
+  server (no system Node needed); the model still downloads on first run.
+- **Capability router** — picks the best *installed* model per task (vision → vision model,
+  build → coder), and (opt-in) escalates hard prompts to a cloud model you configure.
+- **Honest by design** — labeled guesses, permission prompts before touching files, a clear
+  "no model loaded → download one" message instead of silent failure, and "☁ left your device"
+  when the cloud is used.
 
 ## Cloud (optional — off by default)
 
@@ -114,6 +131,51 @@ they need no GPU of yours.
 So think of Maker as the **local-first complement**: reach for it when *private, offline, free,
 and instant* matter more than absolute model horsepower — and (optionally, opt-in) let it
 **escalate the genuinely hard prompts to a cloud model you configure** when you want both.
+
+## Fork it — architecture & future enhancements
+
+Maker is **MIT and open to forks**. The design is a **headless TypeScript engine** with thin
+clients over it, so most work slots into one clear place:
+
+```
+packages/engine     the brain — session, Brief, gap-detection, verification, spiral,
+                    capability router, backends (llama.cpp / MLX / Ollama / echo / cloud)
+packages/provision  hardware detect, model catalog, runtime fetch, offline gate, routing
+packages/runtime    builds + serves the generated web tool on a loopback port (sandboxed)
+packages/store      local persistence (~/.maker): memory, projects, macros, permissions, …
+packages/gui        Node HTTP server (serve.ts) + web UI + the Tauri shell (src-tauri/)
+packages/tui        readline terminal front-end
+```
+Run it: `node packages/gui/serve.ts` (GUI) or `node packages/tui/src/repl.ts` (TUI).
+Verify: `node --test "packages/**/test/**/*.test.ts"`. Every dependency is an interface, so a new
+inference backend, runtime, or front-end is a drop-in. Design rationale lives in
+[`docs/DESIGN.md`](docs/DESIGN.md); the milestone ledger in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+**Good places to take it further** (roughly, most-wanted first):
+
+- **Fully-offline voice.** The transcriber + catalog are already wired
+  (`engine/backends/whisper-transcriber.ts`, `provision/whisper.ts` — `WHISPER_CATALOG`,
+  `hasWhisperModel`). What's left: auto-fetch/spawn a `whisper-server` (mirror the llama.cpp
+  runtime in `provision/`) and stream audio to `/api/transcribe`. Today's 🎤 uses the browser's
+  online recognizer as a labeled fallback.
+- **Signed installers + auto-update.** `.github/workflows/release.yml` already has the signing env
+  and updater hooks stubbed — add an Apple Developer ID cert + a Windows Authenticode cert (repo
+  secrets) to drop the "unidentified developer" prompts, and a Tauri updater keypair + `latest.json`
+  for updates. See [`docs/RELEASING.md`](docs/RELEASING.md).
+- **Universal / Intel macOS build.** Installers are arm64-only right now; add a fat sidecar +
+  `--target universal-apple-darwin`.
+- **More cloud adapters.** OSS ships an OpenAI-compatible adapter (OpenAI / Grok / gateways);
+  Anthropic (`/v1/messages`) and Gemini use different shapes — add them as backends.
+- **Learned capability router.** Replace the heuristic `routeModel()` with a trained per-task
+  picker; add multimodal/image routing beyond the current vision heuristic.
+- **Richer TUI.** An Ink-based terminal UI (the current one is zero-dep readline), plus voice in
+  the terminal (needs a mic-capture tool).
+- **Runtime breadth.** MLX polish on Apple Silicon; CUDA/Vulkan llama.cpp variant selection;
+  Bun as the tool runtime.
+- **Reach.** A mobile thin client paired to a desktop workshop; the compiled Tauri window built
+  locally; sketch input; and the H4 robotics/other-domain scaffolding in the engine.
+
+PRs welcome. Keep the core **offline-first and free** — that's the whole point.
 
 ## Quick start — run the local web app
 
