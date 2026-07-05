@@ -273,10 +273,24 @@ export async function startServer(
   let currentBackend: InferenceBackend = makeInference(backendName);
   let modelRuntimeStop: (() => void) | undefined;
   let requestOverride: InferenceBackend | undefined; // per-request routing (vision)
+  // Are we on a REAL model, or the echo stub? Echo just echoes text — so instead
+  // of confusing the user, we guide them to download a model.
+  let realModelActive = backendName !== "echo";
+  const NO_MODEL_MSG =
+    "⚠ No local model is loaded yet — Maker is running its built-in stub, so it can only echo, not build.\n\n" +
+    "To build real tools, open **⛁ Models** (top-right) and **Download** one — Qwen2.5-Coder 7B is a good start — " +
+    "or type **/setup**. It's a one-time download; after that Maker works fully offline. Once a model is active, " +
+    "ask again (or 🎤 speak) and I'll build it.";
   const inference: InferenceBackend = {
     name: "maker",
     isAvailable: () => (requestOverride ?? currentBackend).isAvailable(),
-    generate: (req) => (requestOverride ?? currentBackend).generate(req),
+    async *generate(req) {
+      if (!realModelActive && !requestOverride) {
+        yield NO_MODEL_MSG; // don't echo — tell the user to get a model
+        return;
+      }
+      yield* (requestOverride ?? currentBackend).generate(req);
+    },
   };
 
   // --- Capability router (H9.3 → H9.8): route a request to the best installed
@@ -353,6 +367,7 @@ export async function startServer(
         modelRuntimeStop?.();
         modelRuntimeStop = runtime.stop;
         currentBackend = llamaCppInference({ host: runtime.url });
+        realModelActive = true; // a real model is now serving — stop guiding to download
         process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
         return runtime.modelId;
       }
