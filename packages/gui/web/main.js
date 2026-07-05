@@ -218,18 +218,58 @@ conv.addEventListener("drop", (e) => {
   for (const f of e.dataTransfer?.files ?? []) addImageFile(f);
 });
 
-// ---------- voice input (speak to build) ----------
+// ---------- voice input (speak to build; auto-submit after a pause) ----------
 const micBtn = $("#mic-btn");
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SILENCE_MS = 3000; // stop-speaking window before we act (tunable)
 let recognizing = false, recognition = null, voiceNoticeShown = false;
+let voiceFinal = "", voiceBase = "", silenceTimer = null;
+// Auto = build after a pause (hands-free). Review = drop the text in the box to
+// edit + send yourself. Remembered per browser.
+let voiceAuto = localStorage.getItem("maker.voiceAuto") !== "false";
+const voiceModeBtn = $("#voice-mode");
+function paintVoiceMode() {
+  voiceModeBtn.textContent = voiceAuto ? "⏎ Auto" : "✏️ Review";
+  voiceModeBtn.classList.toggle("review", !voiceAuto);
+}
+if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+  voiceModeBtn.hidden = false;
+  paintVoiceMode();
+}
+voiceModeBtn.addEventListener("click", () => {
+  voiceAuto = !voiceAuto;
+  localStorage.setItem("maker.voiceAuto", String(voiceAuto));
+  paintVoiceMode();
+  showToast(voiceAuto ? "Voice: Auto — I'll build when you pause." : "Voice: Review — I'll fill the box; you press Enter.", "info");
+});
 
 async function localVoiceReady() {
   try { return (await (await fetch("/api/voice/status")).json()).localReady; } catch { return false; }
 }
-function stopVoice() {
+function clearSilence() { if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; } }
+function armSilence() {
+  clearSilence();
+  silenceTimer = setTimeout(onSilence, SILENCE_MS); // ~3s of no new speech
+}
+function onSilence() {
+  if (voiceAuto) {
+    submitVoice();               // hands-free: build it
+  } else {
+    stopVoice(true);             // review: stop listening, leave text for editing
+    showToast("Got it — review the text and press Enter to build.", "info");
+  }
+}
+function stopVoice(cancel) {
+  clearSilence();
+  recognizing = false;               // set BEFORE stop so onend won't restart
   try { recognition && recognition.stop(); } catch {}
-  recognizing = false;
   micBtn.classList.remove("listening");
+  if (cancel) $("#input").focus();
+}
+function submitVoice() {
+  const text = ($("#input").value || "").trim();
+  stopVoice(false);
+  if (text) $("#composer").requestSubmit(); // same path as pressing Enter
 }
 function startBrowserVoice() {
   if (!SR) {
@@ -237,30 +277,49 @@ function startBrowserVoice() {
     return;
   }
   if (!voiceNoticeShown) {
-    addTurn("assistant", "🎤 Listening — say what you want to build, then review the text and press Enter. (This uses your browser's speech recognition, which may use the internet; fully-offline voice via a local model is on the way.)");
+    const how = voiceAuto
+      ? "When you pause for ~3 seconds, I'll start building it."
+      : "When you pause, I'll drop the text in the box for you to edit, then press Enter.";
+    addTurn("assistant", `🎤 Listening — just say what you want to build. ${how} Tap 🎤 again to cancel; the ⏎/✏️ button switches Auto vs Review. (Uses your browser's speech recognition, which may use the internet; fully-offline voice is on the way.)`);
     voiceNoticeShown = true;
   }
+  const input = $("#input");
+  voiceBase = input.value ? input.value.replace(/\s*$/, "") + " " : "";
+  voiceFinal = "";
   recognition = new SR();
   recognition.lang = navigator.language || "en-US";
   recognition.interimResults = true;
-  recognition.continuous = false;
-  const input = $("#input");
-  const base = input.value ? input.value.replace(/\s*$/, "") + " " : "";
+  recognition.continuous = true; // keep listening across natural pauses
   recognition.onresult = (e) => {
-    let txt = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
-    input.value = base + txt;
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) voiceFinal += r[0].transcript + " ";
+      else interim += r[0].transcript;
+    }
+    input.value = (voiceBase + voiceFinal + interim).replace(/\s+/g, " ").trimStart();
+    armSilence(); // every bit of speech resets the pause timer
   };
-  recognition.onerror = (e) => { showToast("Voice: " + (e.error || "error"), "info"); stopVoice(); };
-  recognition.onend = () => { recognizing = false; micBtn.classList.remove("listening"); input.focus(); };
+  recognition.onerror = (e) => {
+    if (e.error === "no-speech") return; // wait for the silence timer / more speech
+    showToast("Voice: " + (e.error || "error"), "info");
+    stopVoice(true);
+  };
+  recognition.onend = () => {
+    // Chrome ends the session on short silences — keep it alive until OUR ~3s
+    // timer decides it's a real stop.
+    if (recognizing) { try { recognition.start(); } catch {} }
+    else micBtn.classList.remove("listening");
+  };
   recognition.start();
   recognizing = true;
   micBtn.classList.add("listening");
+  armSilence();
 }
 micBtn.addEventListener("click", async () => {
-  if (recognizing) { stopVoice(); return; }
+  if (recognizing) { stopVoice(true); return; } // tap again = cancel
   // Offline whisper path lands here when localVoiceReady() is true; until then,
-  // use the browser recognizer (labeled) so voice→build is usable today.
+  // the browser recognizer (labeled) makes voice→build usable today.
   startBrowserVoice();
 });
 
