@@ -880,6 +880,11 @@ async function loadModels() {
   const removeAllBtn = $("#remove-all");
   removeAllBtn.hidden = data.installed.length === 0;
 
+  // Reset button is inert when a reset would delete nothing.
+  const resetBtn = $("#reset-all");
+  resetBtn.disabled = !data.resettable;
+  resetBtn.title = data.resettable ? "" : "Nothing to remove";
+
   const installedIds = new Set(data.installed.map((m) => m.id));
   const inst = $("#installed-list");
   inst.innerHTML = data.installed.length ? "" : '<p class="muted">none yet</p>';
@@ -889,9 +894,11 @@ async function loadModels() {
     row.innerHTML = `<span class="m-name">${m.name}</span><span class="muted">${fmtGB(m.sizeBytes)}</span>`;
     const use = button(data.active === m.id ? "Active" : "Use", async () => { await post("/api/models/use", { id: m.id }); loadModels(); refreshModelLabel(); });
     use.disabled = data.active === m.id;
+    const folder = button("📂 Folder", () => post("/api/reveal", { id: m.id }));
+    folder.title = "Show this model in your file manager (~/.maker/models)";
     const rm = button("Remove", async () => { await post("/api/models/remove", { id: m.id }); loadModels(); });
     rm.className = "danger";
-    row.append(use, rm);
+    row.append(use, folder, rm);
     inst.appendChild(row);
   }
 

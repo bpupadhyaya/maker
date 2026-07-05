@@ -151,6 +151,24 @@ function openBrowser(url: string): void {
   }
 }
 
+/** Reveal a file/folder in the OS file manager (selecting the file when possible). */
+function revealPath(target: string): void {
+  let cmd: string, args: string[];
+  const dir = path.dirname(target);
+  if (process.platform === "darwin") {
+    cmd = "open"; args = ["-R", target]; // Finder: reveal + select
+  } else if (process.platform === "win32") {
+    cmd = "explorer"; args = [`/select,${target}`];
+  } else {
+    cmd = "xdg-open"; args = [dir]; // Linux: open the containing folder
+  }
+  try {
+    spawn(cmd, args, { detached: true, stdio: "ignore" }).unref();
+  } catch {
+    // best-effort
+  }
+}
+
 function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
     let body = "";
@@ -843,8 +861,28 @@ async function handle(
 
   // --- model management ---
   if (url === "/api/models" && method === "GET") {
+    const payload = (await modelsPayload()) as Record<string, unknown>;
+    // resettable = a reset would actually delete something the user cares about
+    // (a model, a built tool, or user memory) — else the button is inert.
+    const tools = await maker.listTools();
+    const roles = await getRoles(store);
+    const macros = await listMacros(store);
+    const hist = await historyOverview(store);
+    payload["resettable"] =
+      (payload["installed"] as unknown[]).length > 0 ||
+      tools.length > 0 || roles.length > 0 || macros.length > 0 || hist.prompts.length > 0;
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(await modelsPayload()));
+    res.end(JSON.stringify(payload));
+    return;
+  }
+  // Reveal a downloaded model in the OS file manager (Finder / Explorer / files).
+  if (url === "/api/reveal" && method === "POST") {
+    const body = await readJson(req);
+    const id = String(body["id"] ?? "");
+    const target = id ? path.join(os.homedir(), ".maker", "models", `${id}.gguf`) : path.join(os.homedir(), ".maker", "models");
+    revealPath(target);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ ok: true, path: target }));
     return;
   }
   if (url === "/api/models/use" && method === "POST") {

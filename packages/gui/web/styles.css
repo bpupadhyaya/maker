@@ -205,3 +205,4 @@ code { background: #0e0e12; padding: 1px 5px; border-radius: 4px; }
 #onboard-continue { background: var(--accent); color: #0e0e12; border: 0; border-radius: 8px; padding: 8px 20px; font-weight: 600; cursor: pointer; }
 .link { background: transparent; border: 0; color: var(--muted); cursor: pointer; }
 #reset-all { background: #f7768e; color: #0e0e12; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+#reset-all:disabled { background: #24242e; color: var(--muted); cursor: not-allowed; opacity: 0.7; }
