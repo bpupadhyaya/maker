@@ -1,0 +1,67 @@
+/* First-run agreement gate — blocks the workshop until the user agrees. */
+#maker-terms {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 7, 12, 0.82);
+  backdrop-filter: blur(5px);
+  padding: 1.5rem;
+}
+#maker-terms .mt-card {
+  max-width: 540px;
+  width: 100%;
+  background: #16151d;
+  color: #e8e6f0;
+  border: 1px solid rgba(120, 110, 200, 0.45);
+  border-radius: 14px;
+  padding: 1.7rem 1.7rem 1.5rem;
+  font: 14px/1.65 system-ui, -apple-system, sans-serif;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+#maker-terms h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.3rem;
+}
+#maker-terms p {
+  margin: 0 0 0.85rem;
+}
+#maker-terms .mt-fine {
+  color: #a5a1bd;
+  font-size: 13px;
+}
+#maker-terms a {
+  color: #a99bf5;
+}
+#maker-terms .mt-check {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 0.5rem 0 1.1rem;
+  cursor: pointer;
+  user-select: none;
+}
+#maker-terms .mt-check input {
+  margin-top: 0.25rem;
+  flex: none;
+}
+#maker-terms .mt-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+#maker-terms button {
+  padding: 9px 20px;
+  border-radius: 9px;
+  border: 1px solid #6a5acd;
+  background: #5b4fe0;
+  color: #fff;
+  font: 600 14px system-ui;
+  cursor: pointer;
+}
+#maker-terms button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
