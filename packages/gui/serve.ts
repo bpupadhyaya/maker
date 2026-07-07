@@ -431,7 +431,14 @@ export async function startServer(
     }
     return null;
   };
-  await activateModelRuntime();
+  // Lazy model load: do NOT spawn llama-server (and its multiple GB) at startup —
+  // the app launches fast and light. The active model loads on the FIRST build or
+  // chat instead, via ensureActiveModelLoaded() below.
+  const ensureActiveModelLoaded = async (): Promise<void> => {
+    if (activeModelRt) return; // already loaded this session
+    if (!(await getActiveModel())) return; // no model chosen yet — nothing to load
+    await activateModelRuntime();
+  };
 
   const toolsDir = path.join(os.homedir(), ".maker", "tools");
   let lastToolId: string | undefined;
@@ -509,7 +516,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference, visionRouter, listRunningModels, stopRunningModel).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference, visionRouter, listRunningModels, stopRunningModel, ensureActiveModelLoaded).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -552,6 +559,7 @@ async function handle(
   },
   listRunningModels: () => Array<{ modelId: string; url: string; pid?: number; sizeGB?: number; kind: "active" | "routed" }>,
   stopRunningModel: (modelId: string) => boolean,
+  ensureActiveModelLoaded: () => Promise<void>,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -837,6 +845,7 @@ async function handle(
     if (vrc.note || vrc.warn) {
       res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vrc.note ?? vrc.warn })}\n\n`);
     }
+    await ensureActiveModelLoaded(); // lazy: load the active model on the first chat
     try {
       const gen = inference.generate({
         messages: [
@@ -916,6 +925,7 @@ async function handle(
     if (vr.note || vr.warn) {
       res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vr.note ?? vr.warn })}\n\n`);
     }
+    await ensureActiveModelLoaded(); // lazy: load the active model on the first build
     try {
       for await (const ev of maker.express(request, images.length ? { images } : undefined)) {
         if (ev.type === "tool-running") void runHooks(store, "tool-running", { url: ev.url });

@@ -188,6 +188,9 @@ body {
   padding: 4px 10px; cursor: pointer; font-weight: 600;
 }
 .model-row button.danger { background: #f7768e; }
+/* Orange = medium severity (removes a model — re-downloadable), vs red reset. */
+.model-row button.warn { background: #f59e0b; color: #0e0e12; }
+#remove-all.warn { background: #f59e0b; color: #0e0e12; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
 .model-row button:disabled { background: #2a2a31; color: var(--muted); cursor: default; }
 .prog { width: 120px; height: 6px; background: #2a2a31; border-radius: 3px; overflow: hidden; }
 .prog-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }

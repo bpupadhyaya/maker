@@ -728,13 +728,22 @@ function closePanel() { panel.hidden = true; scrim.hidden = true; }
 $("#models-btn").addEventListener("click", openPanel);
 $("#models-close").addEventListener("click", closePanel);
 scrim.addEventListener("click", () => { closePanel(); closeMacros(); closeSched(); closeHooks(); closeSearch(); closeSettings(); closeStats(); });
+// Two-click confirm (confirm() dialogs don't work in the packaged app webview).
+function armConfirm(btn, armedLabel) {
+  if (btn.dataset.armed === "1") { btn.dataset.armed = "0"; btn.textContent = btn.dataset.origLabel; return true; }
+  btn.dataset.armed = "1";
+  btn.dataset.origLabel = btn.textContent;
+  btn.textContent = armedLabel;
+  setTimeout(() => { if (btn.dataset.armed === "1") { btn.dataset.armed = "0"; btn.textContent = btn.dataset.origLabel; } }, 4000);
+  return false;
+}
 $("#remove-all").addEventListener("click", async () => {
-  if (!confirm("Remove ALL downloaded models to free space?")) return;
+  if (!armConfirm($("#remove-all"), "Click again to remove all models")) return;
   await post("/api/models/remove-all", {});
   loadModels();
 });
 $("#reset-all").addEventListener("click", async () => {
-  if (!confirm("Remove ALL data — every model, tool, and memory (~/.maker)? This cannot be undone.")) return;
+  if (!armConfirm($("#reset-all"), "Click again — wipes ALL data")) return;
   const r = await (await post("/api/reset", {})).json();
   addTurn("ok", "✓ Reset complete — freed " + fmtGB(r.freedBytes || 0) + ". Fresh start; run /setup to add a model.");
   loadModels();
@@ -897,7 +906,7 @@ async function loadModels() {
     const folder = button("📂 Folder", () => post("/api/reveal", { id: m.id }));
     folder.title = "Show this model in your file manager (~/.maker/models)";
     const rm = button("Remove", async () => { await post("/api/models/remove", { id: m.id }); loadModels(); });
-    rm.className = "danger";
+    rm.className = "warn"; // orange: removes the model (re-downloadable), not as severe as reset
     row.append(use, folder, rm);
     inst.appendChild(row);
   }
