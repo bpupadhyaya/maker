@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { modelsDir, getActiveModel, mmprojPath } from "./models-store.ts";
 import { ensureRuntime as realEnsureRuntime, runtimeOverride } from "./runtime-installer.ts";
-import { startLlamaServer as realStartServer, getFreePort } from "./server-manager.ts";
+import { startLlamaServer as realStartServer, getFreePort, computeServerTuning } from "./server-manager.ts";
 import type { RunningServer } from "./server-manager.ts";
 import { provisionModel as realProvisionModel } from "./provisioner.ts";
 import type { ProvisionOptions, ProvisionResult, ProgressFn } from "./provisioner.ts";
@@ -28,6 +28,10 @@ export interface StartModelRuntimeOptions {
 export interface ModelRuntime {
   readonly url: string;
   readonly modelId: string;
+  /** llama-server pid (memory accounting / targeted stop). */
+  readonly pid?: number;
+  /** Approx resident size (GB) — model weights (+ projector). */
+  readonly sizeGB?: number;
   stop(): void;
 }
 
@@ -108,6 +112,16 @@ export async function startModelRuntime(
   const ensure = opts.ensureRuntime ?? realEnsureRuntime;
   const start = opts.startServer ?? realStartServer;
 
+  // Size the runtime to THIS model on THIS machine's current free RAM: weights
+  // (+ projector) as the memory proxy → safe context, KV-cache type, offload.
+  let modelSizeGB = 0;
+  try {
+    let bytes = (await fs.stat(modelPath)).size;
+    if (hasVision) { try { bytes += (await fs.stat(projector)).size; } catch { /* projector optional */ } }
+    modelSizeGB = bytes / 1024 ** 3;
+  } catch { /* stat failed — tuning falls back to conservative defaults */ }
+  const tuning = computeServerTuning(modelSizeGB);
+
   opts.onProgress?.("Preparing the local runtime…");
   const binPath = await ensure({ onProgress: (p) => opts.onProgress?.(p.message) });
 
@@ -119,8 +133,15 @@ export async function startModelRuntime(
     binPath,
     modelPath,
     port,
+    tuning,
     ...(hasVision ? { mmprojPath: projector } : {}),
   });
 
-  return { url: server.url, modelId, stop: server.stop };
+  return {
+    url: server.url,
+    modelId,
+    ...(server.pid !== undefined ? { pid: server.pid } : {}),
+    sizeGB: Math.round(modelSizeGB * 10) / 10,
+    stop: server.stop,
+  };
 }

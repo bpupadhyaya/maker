@@ -296,7 +296,13 @@ export async function startServer(
   // --- Capability router (H9.3 → H9.8): route a request to the best installed
   //     model (vision for images, coder for build tasks), starting it on demand,
   //     caching per model id, and reusing it. All backends stopped on exit. ---
-  const modelBackends = new Map<string, { backend: InferenceBackend; stop: () => void }>();
+  // Registry of running model servers for memory accounting + targeted stop.
+  interface RunningModel {
+    modelId: string; url: string; pid?: number; sizeGB?: number;
+    kind: "active" | "routed"; startedAt: number; stop: () => void;
+  }
+  let activeModelRt: RunningModel | null = null;
+  const modelBackends = new Map<string, { backend: InferenceBackend; rt: RunningModel }>();
   const installedVisionIds = async (): Promise<string[]> => {
     const out: string[] = [];
     for (const m of await listInstalledModels()) {
@@ -307,16 +313,48 @@ export async function startServer(
   const ensureModelBackend = async (modelId: string): Promise<InferenceBackend | null> => {
     const cached = modelBackends.get(modelId);
     if (cached) return cached.backend;
+    // MEMORY SAFETY: keep at most ONE routed model resident besides the active
+    // one — stop the oldest routed server before loading another, so vision +
+    // coder + variants can't stack into an out-of-memory condition.
+    while (modelBackends.size >= 1) {
+      const oldest = [...modelBackends.entries()].sort((a, b) => a[1].rt.startedAt - b[1].rt.startedAt)[0];
+      if (!oldest) break;
+      try { oldest[1].rt.stop(); } catch { /* already gone */ }
+      modelBackends.delete(oldest[0]);
+      process.stdout.write(`Freed routed model ${oldest[0]} to make room for ${modelId}.\n`);
+    }
     const rt = await startModelRuntime({ modelId });
     if (!rt) return null;
     const backend = llamaCppInference({ host: rt.url });
-    modelBackends.set(modelId, { backend, stop: rt.stop });
+    modelBackends.set(modelId, {
+      backend,
+      rt: { modelId, url: rt.url, pid: rt.pid, sizeGB: rt.sizeGB, kind: "routed", startedAt: Date.now(), stop: rt.stop },
+    });
     process.stdout.write(`Model ${modelId} ready for routing (${rt.url}).\n`);
     return backend;
   };
   const stopRoutedBackends = (): void => {
-    for (const { stop } of modelBackends.values()) { try { stop(); } catch { /* already gone */ } }
+    for (const { rt } of modelBackends.values()) { try { rt.stop(); } catch { /* already gone */ } }
     modelBackends.clear();
+  };
+  /** All currently-running model servers (active + routed) for the Memory panel. */
+  const listRunningModels = (): RunningModel[] => {
+    const out: RunningModel[] = [];
+    if (activeModelRt) out.push(activeModelRt);
+    for (const { rt } of modelBackends.values()) out.push(rt);
+    return out;
+  };
+  /** Stop a specific running model server by id (routed, or the active one). */
+  const stopRunningModel = (modelId: string): boolean => {
+    const routed = modelBackends.get(modelId);
+    if (routed) { try { routed.rt.stop(); } catch { /* gone */ } modelBackends.delete(modelId); return true; }
+    if (activeModelRt?.modelId === modelId) {
+      try { modelRuntimeStop?.(); } catch { /* gone */ }
+      modelRuntimeStop = undefined; activeModelRt = null;
+      currentBackend = makeInference("echo"); realModelActive = false; // fall back until re-activated
+      return true;
+    }
+    return false;
   };
   // Decide + apply routing for a request; returns a transcript note/warn.
   const beginRoute = async (request: string, images: string[]): Promise<{ note?: string; warn?: string }> => {
@@ -361,17 +399,27 @@ export async function startServer(
   const endRoute = (): void => { requestOverride = undefined; };
   const visionRouter = { begin: beginRoute, end: endRoute };
   const activateModelRuntime = async (): Promise<string | null> => {
+    // MEMORY SAFETY: stop the previously-active model BEFORE loading the new one,
+    // so switching models never holds two full models resident at once.
+    try { modelRuntimeStop?.(); } catch { /* already gone */ }
+    modelRuntimeStop = undefined;
+    activeModelRt = null;
     try {
       const runtime = await startModelRuntime();
       if (runtime) {
-        modelRuntimeStop?.();
         modelRuntimeStop = runtime.stop;
         currentBackend = llamaCppInference({ host: runtime.url });
         realModelActive = true; // a real model is now serving — stop guiding to download
+        activeModelRt = { modelId: runtime.modelId, url: runtime.url, pid: runtime.pid, sizeGB: runtime.sizeGB, kind: "active", startedAt: Date.now(), stop: runtime.stop };
         process.stdout.write(`Running ${runtime.modelId} locally (${runtime.url}).\n`);
         return runtime.modelId;
       }
+      // Nothing to run (no active model / not downloaded yet) — guide, don't error.
+      currentBackend = makeInference("echo"); realModelActive = false;
     } catch (err) {
+      // New model failed to start; the old one is already stopped — fall back to
+      // guiding mode rather than leaving a dead backend wired in.
+      currentBackend = makeInference("echo"); realModelActive = false;
       process.stdout.write(`(Local runtime not ready — ${String(err)}; sideload/Ollama still work.)\n`);
       return `error: ${String(err)}`;
     }
@@ -455,7 +503,7 @@ export async function startServer(
       }
       if (q === token) res.setHeader("set-cookie", `maker_token=${token}; Path=/; SameSite=Strict`);
     }
-    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference, visionRouter).catch((err: unknown) => {
+    void handle(req, res, maker, store, activateModelRuntime, saveToolTo, resolveDir, inference, visionRouter, listRunningModels, stopRunningModel).catch((err: unknown) => {
       res.statusCode = 500;
       res.end(String(err));
     });
@@ -496,6 +544,8 @@ async function handle(
     begin: (request: string, images: string[]) => Promise<{ note?: string; warn?: string }>;
     end: () => void;
   },
+  listRunningModels: () => Array<{ modelId: string; url: string; pid?: number; sizeGB?: number; kind: "active" | "routed" }>,
+  stopRunningModel: (modelId: string) => boolean,
 ): Promise<void> {
   const url = (req.url ?? "/").split("?")[0] ?? "/";
   const method = req.method ?? "GET";
@@ -787,6 +837,7 @@ async function handle(
           { role: "system", content: ASSISTANT_PROMPT },
           { role: "user", content: request },
         ],
+        maxTokens: 2048, // cap so an ungrounded assistant turn can't run away
         ...(images.length ? { images } : {}),
       });
       for await (const chunk of gen) {
@@ -908,6 +959,21 @@ async function handle(
     const swapped = await activateModelRuntime();
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ active: String(body["id"]), running: swapped }));
+    return;
+  }
+  if (url === "/api/models/running" && method === "GET") {
+    // Running model servers (active + routed) with pid/size — for the Memory panel.
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ models: listRunningModels().map((m) => ({ modelId: m.modelId, pid: m.pid, sizeGB: m.sizeGB, kind: m.kind, url: m.url })) }));
+    return;
+  }
+  if (url === "/api/models/stop" && method === "POST") {
+    // Stop a specific running model server (free its memory). Frees a routed
+    // model outright; stopping the active model drops back to guiding mode.
+    const body = await readJson(req);
+    const stopped = stopRunningModel(String(body["id"]));
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ stopped }));
     return;
   }
   if (url === "/api/models/remove" && method === "POST") {
