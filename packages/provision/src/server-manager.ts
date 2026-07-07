@@ -2,6 +2,26 @@ import { spawn as nodeSpawn } from "node:child_process";
 import { createServer } from "node:net";
 import * as os from "node:os";
 
+/**
+ * Reap llama-server processes left over from a PREVIOUS Maker run that was
+ * force-quit or crashed. On macOS/Linux a child isn't killed when its parent
+ * dies, so a hard exit orphans llama-server and they accumulate across launches,
+ * silently eating memory. Call this ONCE at startup — before we spawn any model
+ * server, every running one is an orphan of a prior instance, so it's safe to
+ * kill them all. Best-effort + non-blocking; matches only OUR runtime path.
+ */
+export function reapOrphanModelServers(): void {
+  try {
+    if (process.platform === "win32") {
+      nodeSpawn("taskkill", ["/F", "/IM", "llama-server.exe"], { stdio: "ignore" }).on("error", () => {});
+    } else {
+      // Match processes whose command line references our runtime dir, so we
+      // never touch an unrelated llama-server the user might run themselves.
+      nodeSpawn("pkill", ["-f", ".maker/runtime.*llama-server"], { stdio: "ignore" }).on("error", () => {});
+    }
+  } catch { /* best-effort */ }
+}
+
 /** Ask the OS for a free localhost port (avoids clashes when swapping models). */
 export function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {

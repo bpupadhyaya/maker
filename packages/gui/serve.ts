@@ -44,6 +44,7 @@ import {
   getActiveModel,
   setActiveModel,
   startModelRuntime,
+  reapOrphanModelServers,
   ensureRuntime,
   shouldFetchRuntime,
   mmprojPath,
@@ -266,6 +267,11 @@ export async function startServer(
   const token = opts.token;
   const backendName = process.env["MAKER_BACKEND"] ?? "echo";
   const store = fileMemoryStore();
+
+  // Clean up any llama-server processes orphaned by a previous run that was
+  // force-quit or crashed (they aren't reaped automatically) — prevents model
+  // servers from silently accumulating across launches and eating memory.
+  reapOrphanModelServers();
 
   // Turnkey (H6.3): run the downloaded model ourselves (fetch runtime + start
   // llama-server) — no external tools. A SWITCHABLE backend so that downloading a

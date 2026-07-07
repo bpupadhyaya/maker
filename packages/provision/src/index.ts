@@ -56,7 +56,7 @@ export {
   ensureRuntime,
 } from "./runtime-installer.ts";
 export type { RuntimeBuild, RuntimeProgress, EnsureRuntimeOptions } from "./runtime-installer.ts";
-export { startLlamaServer, getFreePort } from "./server-manager.ts";
+export { startLlamaServer, getFreePort, reapOrphanModelServers, computeServerTuning, modelFitsInRam } from "./server-manager.ts";
 export type { StartServerOptions, RunningServer, ServerChild } from "./server-manager.ts";
 export { startModelRuntime, provisionModelAndRuntime, shouldFetchRuntime } from "./turnkey.ts";
 export { decideVisionRoute, classifyTask, isCoderModel, routeModel, gaugeComplexity, shouldEscalate } from "./routing.ts";
