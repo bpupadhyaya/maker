@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn } from "node:child_process";
+import { spawn as nodeSpawn, execFileSync } from "node:child_process";
 import { createServer } from "node:net";
 import * as os from "node:os";
 
@@ -13,11 +13,23 @@ import * as os from "node:os";
 export function reapOrphanModelServers(): void {
   try {
     if (process.platform === "win32") {
+      // Windows lacks the clean ppid-reparent signal; kill any stray llama-server.exe.
       nodeSpawn("taskkill", ["/F", "/IM", "llama-server.exe"], { stdio: "ignore" }).on("error", () => {});
-    } else {
-      // Match processes whose command line references our runtime dir, so we
-      // never touch an unrelated llama-server the user might run themselves.
-      nodeSpawn("pkill", ["-f", ".maker/runtime.*llama-server"], { stdio: "ignore" }).on("error", () => {});
+      return;
+    }
+    // Only kill TRUE orphans: our runtime's llama-server processes that were
+    // reparented to launchd (ppid 1) because their Maker parent died. A model
+    // owned by another LIVE Maker instance still has a real parent, so we leave
+    // it alone — never disrupt a second running window.
+    const out = execFileSync("ps", ["-Ao", "pid=,ppid=,command="], { encoding: "utf8", maxBuffer: 1 << 24 });
+    for (const line of out.split("\n")) {
+      const m = line.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/);
+      if (!m) continue;
+      const pid = Number(m[1]);
+      const ppid = Number(m[2]);
+      if (ppid === 1 && /\.maker\/runtime.*llama-server/.test(m[3]!)) {
+        try { process.kill(pid, "SIGKILL"); } catch { /* already gone */ }
+      }
     }
   } catch { /* best-effort */ }
 }
