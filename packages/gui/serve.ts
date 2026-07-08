@@ -157,7 +157,9 @@ function revealPath(target: string): void {
   let cmd: string, args: string[];
   const dir = path.dirname(target);
   if (process.platform === "darwin") {
-    cmd = "open"; args = ["-R", target]; // Finder: reveal + select
+    // Absolute path: a Finder-launched app has a minimal PATH that may not resolve
+    // bare "open", so the reveal silently did nothing in the packaged build.
+    cmd = "/usr/bin/open"; args = ["-R", target]; // Finder: reveal + select
   } else if (process.platform === "win32") {
     cmd = "explorer"; args = [`/select,${target}`];
   } else {

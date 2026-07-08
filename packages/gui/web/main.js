@@ -905,7 +905,11 @@ async function loadModels() {
     use.disabled = data.active === m.id;
     const folder = button("📂 Folder", () => post("/api/reveal", { id: m.id }));
     folder.title = "Show this model in your file manager (~/.maker/models)";
-    const rm = button("Remove", async () => { await post("/api/models/remove", { id: m.id }); loadModels(); });
+    const rm = button("Remove", async () => {
+      if (!armConfirm(rm, "Click to confirm")) return; // two-click: don't delete GBs on a stray click
+      await post("/api/models/remove", { id: m.id });
+      loadModels();
+    });
     rm.className = "warn"; // orange: removes the model (re-downloadable), not as severe as reset
     row.append(use, folder, rm);
     inst.appendChild(row);
