@@ -175,6 +175,12 @@ body {
   background: transparent; color: var(--muted); border: 1px solid #2a2a31;
   border-radius: 6px; padding: 4px 8px; cursor: pointer;
 }
+/* Models panel: keep the title compact so "Remove all models" sits with the
+   left group, and shove the close (✕) to the far right (margin-left:auto eats the
+   space between) so it clearly reads as a separate action — not a confirm for
+   Remove all models. */
+#models-panel .panel-head h2 { flex: none; }
+#models-panel #models-close { margin-left: auto; }
 .muted { color: var(--muted); font-size: 13px; }
 .model-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .model-row {
