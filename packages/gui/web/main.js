@@ -324,34 +324,48 @@ micBtn.addEventListener("click", async () => {
 });
 
 // ---------- conversation (SSE) ----------
+// Guards against submitting a second prompt while the first is still streaming —
+// a large/slow model (e.g. a 70B model) can take a long time to reply, and two
+// overlapping turns would otherwise land as consecutive same-role messages,
+// which strict chat templates (Llama 3.x, Qwen2.5, …) reject outright.
+let expressBusy = false;
 async function express(request) {
-  addTurn("user", pendingImages.length ? `${request}  [${pendingImages.length} image(s)]` : request);
-  const images = pendingImages;
-  pendingImages = [];
-  renderAttachments();
-  let streamEl = null;
-  const res = await fetch("/api/express", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ request, images }),
-  });
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let nl;
-    while ((nl = buf.indexOf("\n\n")) >= 0) {
-      const frame = buf.slice(0, nl);
-      buf = buf.slice(nl + 2);
-      const line = frame.split("\n").find((l) => l.startsWith("data:"));
-      if (!line) continue;
-      let ev;
-      try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
-      handleEvent(ev, () => (streamEl ??= addTurn("assistant", "")), (el) => (streamEl = el));
+  if (expressBusy) { showToast("Still working on your last message — wait for it to finish."); return; }
+  expressBusy = true;
+  $("#input").disabled = true;
+  try {
+    addTurn("user", pendingImages.length ? `${request}  [${pendingImages.length} image(s)]` : request);
+    const images = pendingImages;
+    pendingImages = [];
+    renderAttachments();
+    let streamEl = null;
+    const res = await fetch("/api/express", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ request, images }),
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, nl);
+        buf = buf.slice(nl + 2);
+        const line = frame.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+        handleEvent(ev, () => (streamEl ??= addTurn("assistant", "")), (el) => (streamEl = el));
+      }
     }
+  } finally {
+    expressBusy = false;
+    $("#input").disabled = false;
+    $("#input").focus();
   }
 }
 
