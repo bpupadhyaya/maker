@@ -5,6 +5,14 @@
 const PRESET_FRACTIONS = { talk: 0.7, split: 0.55, build: 0.32 };
 const COLLAPSE_WIDTH = 640;
 
+// Optional extension point: a companion script running on this page (e.g. the
+// Pro panel, when a project is set as active) may set this to redirect where
+// "save this" / ⬇ Save default to, instead of ~/Downloads. Free Maker works
+// unchanged if nothing ever sets it.
+function defaultSaveBase() {
+  return window.__MAKER_DEFAULT_SAVE_DIR__ || "~/Downloads";
+}
+
 const $ = (sel) => document.querySelector(sel);
 const workspace = $("#workspace");
 const transcript = $("#transcript");
@@ -413,7 +421,7 @@ const GUI_COMMANDS = [
   { name: "/help", args: "", desc: "list all commands", run: () => showHelp() },
   { name: "/setup", args: "", desc: "download a model (opens Models)", run: () => openPanel() },
   { name: "/models", args: "", desc: "manage models", run: () => openPanel() },
-  { name: "/save", args: "[folder]", desc: "save the tool's files to a folder", run: (a) => saveTo(a || "~/Downloads/" + toolSlug(), false) },
+  { name: "/save", args: "[folder]", desc: "save the tool's files to a folder", run: (a) => saveTo(a || `${defaultSaveBase()}/${toolSlug()}`, false) },
   { name: "/read", args: "<folder>", desc: "read + analyze a local folder", run: (a) => a ? readAnalyze(a, "Analyze this folder", false) : addTurn("error", "usage: /read <folder>") },
   { name: "/allow", args: "<folder>", desc: "allow Maker to read/write a folder", run: async (a) => { if (!a) return addTurn("error", "usage: /allow <folder>"); await post("/api/permissions/grant", { dir: a }); addTurn("ok", "✓ Allowed " + a); } },
   { name: "/permissions", args: "", desc: "list allowed folders", run: async () => { const g = (await (await fetch("/api/permissions")).json()).granted; addTurn("assistant", g.length ? "Allowed folders:\n" + g.join("\n") : "No folders allowed yet — /allow <folder>."); } },
@@ -532,7 +540,7 @@ $("#composer").addEventListener("submit", (e) => {
   // NOT the model (small models just say "I can't access files").
   const save = /^\s*(?:please\s+)?save\b(?:\s+(?:the\s+)?(?:project|tool|it|this|files?))?(?:\s+(?:in|to|into|at)\s+(.+?))?\s*$/i.exec(text);
   if (save && !text.startsWith("/")) {
-    const base = cleanFolderPhrase(save[1] || "~/Downloads");
+    const base = cleanFolderPhrase(save[1] || defaultSaveBase());
     addTurn("user", text);
     saveTo(`${base}/${toolSlug()}`, false);
     return;
@@ -678,7 +686,7 @@ async function readAnalyze(dir, userText, force) {
 }
 
 $("#export-btn").addEventListener("click", () => {
-  const dir = prompt("Save the current tool to which folder?", "~/Downloads/" + toolSlug());
+  const dir = prompt("Save the current tool to which folder?", `${defaultSaveBase()}/${toolSlug()}`);
   if (dir) saveTo(dir, false);
 });
 
