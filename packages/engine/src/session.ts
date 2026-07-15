@@ -2,6 +2,30 @@ import type { InferenceBackend } from "./interfaces/inference.ts";
 import type { MakerEvent } from "./events.ts";
 import type { ChatMessage } from "./types.ts";
 
+/**
+ * Many instruct-tuned chat templates (Llama 3.x, Qwen2.5, …) STRICTLY require
+ * user/assistant roles to alternate and reject the request outright otherwise —
+ * llama-server surfaces that as an HTTP 400 ("prompt not well formed"). History
+ * can end up with two consecutive same-role turns if a prior turn errored (the
+ * dangling user push) or — before the busy-guard below — if two turns were sent
+ * concurrently. This merges any consecutive same-role messages (joining content
+ * with a blank line) right before we build the request, so a template is NEVER
+ * handed a non-alternating conversation — including one already corrupted and
+ * persisted to disk before this fix shipped.
+ */
+export function normalizeAlternation(messages: readonly ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const m of messages) {
+    const prev = out[out.length - 1];
+    if (prev && prev.role === m.role && m.role !== "system") {
+      out[out.length - 1] = { ...prev, content: `${prev.content}\n\n${m.content}` };
+    } else {
+      out.push({ ...m });
+    }
+  }
+  return out;
+}
+
 /** Everything a Session needs, injected behind interfaces. */
 export interface SessionDeps {
   readonly inference: InferenceBackend;
@@ -40,15 +64,27 @@ export function createSession(deps: SessionDeps): Session {
   if (deps.systemPrompt !== undefined) {
     history.push({ role: "system", content: deps.systemPrompt });
   }
+  // Reentrancy guard: a slow model (e.g. a 70B model) can take a long time to
+  // reply, and an impatient user (or an automated caller like self-heal) can
+  // submit a second turn before the first finishes. Two "user" pushes with no
+  // assistant reply between them breaks strict-alternation templates. Reject a
+  // concurrent turn instead of corrupting history.
+  let busy = false;
 
   async function* send(userMessage: string, opts?: TurnOptions): AsyncIterable<MakerEvent> {
+    if (busy) {
+      yield { type: "error", message: "Still working on your last message — wait for it to finish before sending another." };
+      return;
+    }
+    busy = true;
+    const userIndex = history.length;
     history.push({ role: "user", content: userMessage });
     let assembled = "";
     const images = opts?.images;
     const params = deps.genParams ? await deps.genParams() : {};
     try {
       for await (const chunk of deps.inference.generate({
-        messages: history,
+        messages: normalizeAlternation(history),
         ...(images && images.length ? { images } : {}),
         ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
         ...(params.maxTokens !== undefined ? { maxTokens: params.maxTokens } : {}),
@@ -59,10 +95,16 @@ export function createSession(deps: SessionDeps): Session {
       history.push({ role: "assistant", content: assembled });
       yield { type: "assistant-done", text: assembled };
     } catch (err) {
+      // Revert the dangling user push — an errored turn didn't happen, so the
+      // NEXT attempt starts from clean, still-alternating history instead of
+      // stacking another user message on top of this one.
+      if (history.length > userIndex && history[userIndex]?.role === "user") history.length = userIndex;
       yield {
         type: "error",
         message: err instanceof Error ? err.message : String(err),
       };
+    } finally {
+      busy = false;
     }
   }
 

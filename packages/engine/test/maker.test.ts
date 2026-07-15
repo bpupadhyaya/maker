@@ -86,6 +86,25 @@ test("a reply with no code block is a plain chat turn (no tool)", async () => {
   }
 });
 
+test("a bare greeting does not trigger gap-detection clarifiers, and a real build request right after still does", async () => {
+  const maker = createMaker({
+    inference: scripted(["Hey! What would you like to build?", BUILD_REPLY]),
+    runtime: localWebRuntime({ rootDir: await tmpRoot() }),
+  });
+  try {
+    const hiEvents = await collect(maker.express("hi"));
+    assert.ok(!hiEvents.some((e) => e.type === "clarify"), "\"hi\" must not produce a clarifier");
+
+    const buildEvents = await collect(maker.express("build me a counter"));
+    assert.ok(
+      buildEvents.some((e) => e.type === "tool-running"),
+      "the follow-up real build request must still work normally",
+    );
+  } finally {
+    await maker.stop();
+  }
+});
+
 test("synthesizeFiles parses paths, langs, and multiple files", () => {
   const files = synthesizeFiles(
     "```html path=index.html\n<h1>hi</h1>\n```\n```js\nconsole.log(1)\n```",

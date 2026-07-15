@@ -13,7 +13,7 @@ export type { Brief, Guess, BriefStore } from "./interfaces/brief.ts";
 export { emptyBrief } from "./interfaces/brief.ts";
 export type { MakerEvent } from "./events.ts";
 export type { Session, SessionDeps } from "./session.ts";
-export { createSession } from "./session.ts";
+export { createSession, normalizeAlternation } from "./session.ts";
 export { echoInference } from "./backends/echo-inference.ts";
 export type { EchoOptions } from "./backends/echo-inference.ts";
 export { ollamaInference } from "./backends/ollama-inference.ts";
@@ -32,7 +32,7 @@ export { ROLES, roleById, startersForRoles, kindsForRoles } from "./roles.ts";
 export type { Role } from "./roles.ts";
 export { STARTERS, starterById, orderedStarters } from "./starters.ts";
 export type { Starter } from "./starters.ts";
-export { classifyKind, detectGaps } from "./gap-detection.ts";
+export { classifyKind, detectGaps, looksLikeBuildRequest } from "./gap-detection.ts";
 export type { ToolKind, Gap, Clarifier, GapResult, GapOptions } from "./gap-detection.ts";
 export {
   evaluateCheck,

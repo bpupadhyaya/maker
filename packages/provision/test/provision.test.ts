@@ -11,6 +11,8 @@ import {
   verifyChecksum,
   sha256,
   runOfflineGate,
+  computeServerTuning,
+  classifyTask,
 } from "../src/index.ts";
 import type { Hardware } from "../src/index.ts";
 import { localWebRuntime } from "../../runtime/src/index.ts";
@@ -37,6 +39,26 @@ test("selectModel picks the strongest model that fits RAM", () => {
   assert.equal(selectModel(hw(16)).id, "qwen2.5-coder-7b");
   assert.equal(selectModel(hw(32)).id, "qwen2.5-coder-14b");
   assert.equal(selectModel(hw(96)).id, "qwen2.5-coder-32b");
+});
+
+test("classifyTask: a reflective question about past behavior is chat, even if it mentions code/build words", () => {
+  assert.equal(classifyTask("why did u generate code without asking for it?", false), "chat");
+  assert.equal(classifyTask("what happened to the app you built?", false), "chat");
+  assert.equal(classifyTask("how did you make that button?", false), "chat");
+});
+
+test("classifyTask: genuine build requests still classify as code", () => {
+  assert.equal(classifyTask("build me a tip calculator", false), "code");
+  assert.equal(classifyTask("add a reset button", false), "code");
+});
+
+test("computeServerTuning never exceeds a sane ctx window and always quantizes the KV cache", () => {
+  // Regardless of how much headroom THIS machine happens to have, a single
+  // Maker conversation doesn't need more context just because RAM is abundant
+  // — more headroom should mean "fits more comfortably", not "biggest settings".
+  const t = computeServerTuning(4); // a small model — plenty of headroom on any CI/dev machine
+  assert.ok([2048, 4096, 8192].includes(t.ctxSize), `ctxSize ${t.ctxSize} must be capped at 8192`);
+  assert.equal(t.cacheType, "q8_0");
 });
 
 test("selectModel falls back to the smallest on very low RAM", () => {

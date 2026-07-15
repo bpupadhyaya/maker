@@ -84,15 +84,21 @@ export function computeServerTuning(modelSizeGB: number): ServerTuning {
   // own weights, right now — the tighter of "free now" and "total minus weights".
   const headroomGB = Math.max(0, Math.min(freeGB, totalGB - modelSizeGB) - RESERVE_GB);
 
-  // Context window drives KV-cache size; size it to the headroom.
+  // Context window drives KV-cache size. A single Maker conversation rarely
+  // needs more than a few thousand tokens (history is capped at 50 turns), so
+  // this is capped well below "whatever the headroom allows" — more free RAM
+  // means the model fits more COMFORTABLY, not that the context window should
+  // grow. Uncapped, a high-RAM machine picks the biggest, most memory-hungry
+  // setting exactly when it has the most headroom, which defeats the point.
   let ctxSize: number;
-  if (headroomGB >= 12) ctxSize = 16384;
-  else if (headroomGB >= 6) ctxSize = 8192;
+  if (headroomGB >= 6) ctxSize = 8192;
   else if (headroomGB >= 3) ctxSize = 4096;
   else ctxSize = 2048;
 
-  // Quantize the KV cache whenever memory is even moderately constrained (halves it).
-  const cacheType: ServerTuning["cacheType"] = headroomGB < 10 ? "q8_0" : "f16";
+  // Always quantize the KV cache — halves its size for a negligible quality
+  // cost, regardless of headroom. Ample RAM should go toward fitting a BIGGER
+  // MODEL, not toward an uncompressed cache for one that already fits.
+  const cacheType: ServerTuning["cacheType"] = "q8_0";
 
   // GPU offload (Apple Silicon unified memory): FULL offload pins the model
   // resident, so only do it when weights + a little KV clearly fit under total

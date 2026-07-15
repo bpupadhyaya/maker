@@ -24,10 +24,18 @@ export type TaskKind = "vision" | "code" | "chat";
 
 const CODE_HINT = /\b(build|make|create|code|app|tool|website|web app|page|form|dashboard|tracker|calculator|timer|game|component|function|script|ui|button|add (a|an)|generate)\b/i;
 const CODER_ID = /(coder|[-_]code|deepseek.*coder|qwen.*coder)/i;
+// A question ABOUT something already said/done ("why did you generate code
+// without asking?") is conversational, not a new build directive — even
+// though it may contain CODE_HINT words like "code" or "generate". Without
+// this guard, merely mentioning "code" while asking about past behavior
+// routes to the coder model: wrong answer, and a slow cold-load of a model
+// that wasn't already resident for no benefit.
+const REFLECTIVE_QUESTION = /^\s*(why|what|how|who|when|where)\b.*\?\s*$/i;
 
 /** Cheap, deterministic task classification from the request + whether images are attached. */
 export function classifyTask(request: string, hasImages: boolean): TaskKind {
   if (hasImages) return "vision";
+  if (REFLECTIVE_QUESTION.test(request)) return "chat";
   return CODE_HINT.test(request) ? "code" : "chat";
 }
 

@@ -68,6 +68,26 @@ const ARCHETYPES: Readonly<Record<ToolKind, readonly Gap[]>> = {
   ],
 };
 
+const GREETING_OR_ACK =
+  /^\s*(hi|hey|hello|yo|sup|hiya|thanks|thank you|ok|okay|cool|nice|great|sure|yep|nope|test)[.!?]*\s*$/i;
+const QUESTION_ABOUT_PAST = /^\s*(why|what|how|who|when|where)\b.*\?\s*$/i;
+
+/**
+ * Does this message actually describe/request something to build or change,
+ * as opposed to a greeting, acknowledgement, or a question about something
+ * already said/done? Gap-detection should only run for genuine build
+ * requests — running it on e.g. a bare "hi" produces a nonsensical clarifier
+ * ("Should its data persist after closing?" for a message that never
+ * described any tool at all).
+ */
+export function looksLikeBuildRequest(request: string): boolean {
+  const r = request.trim();
+  if (!r) return false;
+  if (GREETING_OR_ACK.test(r)) return false;
+  if (QUESTION_ABOUT_PAST.test(r)) return false;
+  return true;
+}
+
 /** Heuristic tool-kind classifier (a small, corpus-friendly stand-in). */
 export function classifyKind(request: string): ToolKind {
   const r = request.toLowerCase();

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classifyKind, detectGaps } from "../src/index.ts";
+import { classifyKind, detectGaps, looksLikeBuildRequest } from "../src/index.ts";
 
 test("classifyKind recognizes common tool kinds", () => {
   assert.equal(classifyKind("build me a tip calculator"), "money");
@@ -45,4 +45,21 @@ test("known gaps are skipped (memory shrinks the question set)", () => {
     known: ["money.currency", "money.rounding", "money.tax"],
   });
   assert.equal(clarifiers.length, 0);
+});
+
+test("looksLikeBuildRequest: greetings/acks/past-tense questions are not build requests", () => {
+  assert.equal(looksLikeBuildRequest("hi"), false);
+  assert.equal(looksLikeBuildRequest("hello!"), false);
+  assert.equal(looksLikeBuildRequest("thanks"), false);
+  assert.equal(looksLikeBuildRequest("ok"), false);
+  assert.equal(looksLikeBuildRequest(""), false);
+  assert.equal(looksLikeBuildRequest("   "), false);
+  assert.equal(looksLikeBuildRequest("why did u generate code without asking for it?"), false);
+  assert.equal(looksLikeBuildRequest("what happened to my tool?"), false);
+});
+
+test("looksLikeBuildRequest: genuine build descriptions are build requests", () => {
+  assert.equal(looksLikeBuildRequest("build a tip calculator"), true);
+  assert.equal(looksLikeBuildRequest("add a reset button"), true);
+  assert.equal(looksLikeBuildRequest("make the text bigger"), true);
 });

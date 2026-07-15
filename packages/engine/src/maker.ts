@@ -8,7 +8,7 @@ import type { TasteMemory } from "./taste-memory.ts";
 import { createSession } from "./session.ts";
 import { synthesizeFiles, MAKER_SYSTEM_PROMPT } from "./synthesizer.ts";
 import { parseBriefBlock, mergeBrief } from "./brief-manager.ts";
-import { detectGaps } from "./gap-detection.ts";
+import { detectGaps, looksLikeBuildRequest } from "./gap-detection.ts";
 import {
   smokeCheck,
   parseChecksBlock,
@@ -153,8 +153,12 @@ export function createMaker(deps: MakerDeps): Maker {
     request: string,
     opts?: { images?: readonly string[] },
   ): AsyncIterable<MakerEvent> {
-    // Understand: on the first turn, detect the gaps worth asking about.
-    if (!gapsChecked) {
+    // Understand: on the first turn that actually looks like a build request,
+    // detect the gaps worth asking about. A bare greeting/ack/question ("hi",
+    // "thanks", "why did you do that?") isn't a build request — running gap
+    // detection on it produces a nonsensical clarifier, and it leaves
+    // gapsChecked false so the NEXT, real build request still gets checked.
+    if (!gapsChecked && looksLikeBuildRequest(request)) {
       gapsChecked = true;
       const known = deps.taste ? await deps.taste.knownGapIds() : [];
       const gaps = detectGaps(request, { known });
