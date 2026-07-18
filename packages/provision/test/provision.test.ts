@@ -57,7 +57,7 @@ test("computeServerTuning never exceeds a sane ctx window and always quantizes t
   // Maker conversation doesn't need more context just because RAM is abundant
   // — more headroom should mean "fits more comfortably", not "biggest settings".
   const t = computeServerTuning(4); // a small model — plenty of headroom on any CI/dev machine
-  assert.ok([2048, 4096, 8192].includes(t.ctxSize), `ctxSize ${t.ctxSize} must be capped at 8192`);
+  assert.ok([4096, 8192].includes(t.ctxSize), `ctxSize ${t.ctxSize} must be between the 4096 floor and 8192 cap`);
   assert.equal(t.cacheType, "q8_0");
 });
 

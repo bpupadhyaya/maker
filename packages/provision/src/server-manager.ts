@@ -90,10 +90,17 @@ export function computeServerTuning(modelSizeGB: number): ServerTuning {
   // means the model fits more COMFORTABLY, not that the context window should
   // grow. Uncapped, a high-RAM machine picks the biggest, most memory-hungry
   // setting exactly when it has the most headroom, which defeats the point.
-  let ctxSize: number;
-  if (headroomGB >= 6) ctxSize = 8192;
-  else if (headroomGB >= 3) ctxSize = 4096;
-  else ctxSize = 2048;
+  //
+  // Floor is 4096, not 2048: with the KV cache always quantized (q8_0) below,
+  // even a large model's cache costs well under 1GB across this whole range —
+  // context size barely moves the memory needle at this scale, weights do.
+  // A 2048 floor was cheap in theory but broke real usage: the system prompt
+  // alone is several hundred tokens, and a normal multi-turn conversation
+  // routinely exceeded it, throwing a hard "exceeds context size" error
+  // instead of just answering. `os.freemem()` also dips low in perfectly
+  // normal situations (e.g. another Maker instance already has models
+  // resident) — that should size DOWN gracefully, not become unusable.
+  const ctxSize = headroomGB >= 6 ? 8192 : 4096;
 
   // Always quantize the KV cache — halves its size for a negligible quality
   // cost, regardless of headroom. Ample RAM should go toward fitting a BIGGER
