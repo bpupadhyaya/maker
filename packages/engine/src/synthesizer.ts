@@ -54,7 +54,7 @@ export const MAKER_SYSTEM_PROMPT =
 const WEB_LANGS = new Set([
   "html", "htm", "css", "js", "javascript", "mjs", "ts", "typescript", "json",
 ]);
-const RESERVED = new Set(["brief", "checks", "contract", "robot", "pack"]);
+const RESERVED = new Set(["brief", "checks", "contract", "robot", "pack", "tool-call"]);
 
 /** A fenced block with no language but obvious HTML markup is still a tool page. */
 function looksLikeHtml(s: string): boolean {
@@ -70,7 +70,7 @@ export function synthesizeFiles(modelText: string): Record<string, string> {
   for (let m = fence.exec(modelText); m !== null; m = fence.exec(modelText)) {
     const info = (m[1] ?? "").trim();
     const lang = info.split(/\s+/)[0]?.toLowerCase() ?? "";
-    if (RESERVED.has(lang)) continue; // brief/checks/contract/robot/pack aren't files
+    if (RESERVED.has(lang)) continue; // brief/checks/contract/robot/pack/tool-call aren't files
 
     let body = m[2] ?? "";
     if (body.endsWith("\n")) body = body.slice(0, -1);

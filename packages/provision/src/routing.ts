@@ -22,7 +22,13 @@ export function decideVisionRoute(opts: {
 // --- Capability router (H9.8): pick the best AVAILABLE model per task ---
 export type TaskKind = "vision" | "code" | "chat";
 
-const CODE_HINT = /\b(build|make|create|code|app|tool|website|web app|page|form|dashboard|tracker|calculator|timer|game|component|function|script|ui|button|add (a|an)|generate)\b/i;
+// "tool" was in this list but removed: it's a weak signal on its own (lots of
+// chat mentions "tool" without meaning "build me one" — including, concretely,
+// any turn where MCP tools are configured, since describing them to the model
+// necessarily uses the word "tool" repeatedly, which silently misrouted EVERY
+// message to the coder model whenever any MCP server was active). The other
+// keywords remain strong enough signals without it.
+const CODE_HINT = /\b(build|make|create|code|app|website|web app|page|form|dashboard|tracker|calculator|timer|game|component|function|script|ui|button|add (a|an)|generate)\b/i;
 const CODER_ID = /(coder|[-_]code|deepseek.*coder|qwen.*coder)/i;
 // A question ABOUT something already said/done ("why did you generate code
 // without asking?") is conversational, not a new build directive — even

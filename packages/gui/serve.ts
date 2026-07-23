@@ -922,8 +922,15 @@ async function handle(
     const images = Array.isArray(body["images"]) ? body["images"].map(String) : [];
     sse(res);
     // Vision routing (H9.3): route image requests to a vision model if needed,
-    // else warn. The note tells the user which model is answering.
-    const vr = await visionRouter.begin(request, images);
+    // else warn. The note tells the user which model is answering. Routing
+    // classifies on `classifyHint` if the caller supplies one (defaults to the
+    // full `request`) — a caller that prepends its own context to `request`
+    // (RAG results, connector data, MCP tool descriptions, ...) can pass the
+    // user's original, unaugmented text here instead, so injected content a
+    // caller doesn't control can't accidentally trip the keyword classifier
+    // into misrouting an ordinary chat turn to the coder model.
+    const classifyHint = typeof body["classifyHint"] === "string" ? body["classifyHint"] : request;
+    const vr = await visionRouter.begin(classifyHint, images);
     if (vr.note || vr.warn) {
       res.write(`data: ${JSON.stringify({ type: "assistant-delta", text: vr.note ?? vr.warn })}\n\n`);
     }
